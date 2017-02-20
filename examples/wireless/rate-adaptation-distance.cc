@@ -121,7 +121,8 @@ NodeStatistics::AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
   Vector pos = GetPosition (node);
   double mbs = ((m_bytesTotal * 8.0) / (1000000 * stepsTime));
   m_bytesTotal = 0;
-  m_output.Add (pos.x, mbs);
+// m_output.Add (pos.x, mbs);
+  m_output.Add (Simulator::Now().GetSeconds(), mbs);
   pos.x += stepsSize;
   SetPosition (node, pos);
   Simulator::Schedule (Seconds (stepsTime), &NodeStatistics::AdvancePosition, this, node, stepsSize, stepsTime);
@@ -262,11 +263,13 @@ int main (int argc, char *argv[])
   Simulator::Stop (Seconds (simuTime));
   Simulator::Run ();
 
-  std::ofstream outfile (("throughput-" + outputFileName + ".plt").c_str ());
-  Gnuplot gnuplot = Gnuplot (("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
-  gnuplot.SetTerminal ("post eps color enhanced");
+//  std::ofstream outfile (("throughput-" + outputFileName + ".plt").c_str ());
+  std::ofstream outfile (("throughput-" + outputFileName + ".csv").c_str ());
+//  Gnuplot gnuplot = Gnuplot (("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
+  Gnuplot gnuplot = Gnuplot ();
+/*  gnuplot.SetTerminal ("post eps color enhanced");
   gnuplot.SetLegend ("Time (seconds)", "Throughput (Mb/s)");
-  gnuplot.SetTitle ("Throughput (AP to STA) vs time");
+  gnuplot.SetTitle ("Throughput (AP to STA) vs time");*/
   gnuplot.AddDataset (atpCounter.GetDatafile ());
   gnuplot.GenerateOutput (outfile);
 
