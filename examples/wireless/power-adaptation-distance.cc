@@ -111,35 +111,24 @@ class NodeStatistics
 public:
   NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas, bool logDistance);
 
-  void CheckStatistics (double time);
-
   void PhyCallback (std::string path, Ptr<const Packet> packet);
   void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
   void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
   void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
   void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
   void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest);
-  void SetPosition (Ptr<Node> node, Vector position);
-  void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime);
-  Vector GetPosition (Ptr<Node> node);
 
-  Gnuplot2dDataset GetDatafile ();
-  Gnuplot2dDataset GetPowerDatafile ();
-
-private:
   typedef std::vector<std::pair<Time,WifiMode> > TxTime;
   void SetupPhy (Ptr<WifiPhy> phy);
   Time GetCalcTxTime (WifiMode mode);
 
   std::map<Mac48Address, uint32_t> actualPower;
   std::map<Mac48Address, WifiMode> actualMode;
-  uint32_t m_bytesTotal;
+  uint32_t totalBytes;
   double totalEnergy;
   double totalTime;
   Ptr<WifiPhy> myPhy;
   TxTime timeTable;
-  Gnuplot2dDataset m_output;
-  Gnuplot2dDataset m_output_power;
   bool m_logDistance;
 };
 
@@ -161,9 +150,7 @@ NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas,
   actualMode[Mac48Address ("ff:ff:ff:ff:ff:ff")] = phy->GetMode (0);
   totalEnergy = 0;
   totalTime = 0;
-  m_bytesTotal = 0;
-  m_output.SetTitle ("Throughput Mbits/s");
-  m_output_power.SetTitle ("Average Transmit Power");
+  totalBytes = 0;
   m_logDistance = logDistance;
 }
 
@@ -261,64 +248,7 @@ NodeStatistics::BluesRateCallback (std::string path, std::string type, uint32_t 
 void
 NodeStatistics::RxCallback (std::string path, Ptr<const Packet> packet, const Address &from)
 {
-  m_bytesTotal += packet->GetSize ();
-}
-
-void
-NodeStatistics::CheckStatistics (double time)
-{
-
-}
-
-void
-NodeStatistics::SetPosition (Ptr<Node> node, Vector position)
-{
-  Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
-  mobility->SetPosition (position);
-}
-
-Vector
-NodeStatistics::GetPosition (Ptr<Node> node)
-{
-  Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
-  return mobility->GetPosition ();
-}
-
-void
-NodeStatistics::AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
-{
-  Vector pos = GetPosition (node);
-  double mbs = ((m_bytesTotal * 8.0) / (1000000 * stepsTime));
-  m_bytesTotal = 0;
-  double atm = totalEnergy / stepsTime;
-  totalEnergy = 0;
-  totalTime = 0;
-  if (m_logDistance)
-    {
-      m_output_power.Add (pos.x, atm);
-      m_output.Add (pos.x, mbs);
-    }
-  else
-    {
-      m_output_power.Add (Simulator::Now ().GetSeconds (), atm);
-      m_output.Add (Simulator::Now ().GetSeconds (), mbs);
-    }
-  pos.x += stepsSize;
-  SetPosition (node, pos);
-  NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << " sec, setting new position to " << pos);
-  Simulator::Schedule (Seconds (stepsTime), &NodeStatistics::AdvancePosition, this, node, stepsSize, stepsTime);
-}
-
-Gnuplot2dDataset
-NodeStatistics::GetDatafile ()
-{
-  return m_output;
-}
-
-Gnuplot2dDataset
-NodeStatistics::GetPowerDatafile ()
-{
-  return m_output_power;
+  totalBytes += packet->GetSize ();
 }
 
 void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
@@ -358,11 +288,10 @@ int main (int argc, char *argv[])
   std::string transportProtocol = "ns3::UdpSocketFactory";
   int ap1_x = 0;
   int ap1_y = 0;
-  int sta1_x = 5;
-  int sta1_y = 0;
-  uint32_t steps = 200;
-  uint32_t stepsSize = 1;
-  uint32_t stepsTime = 1;
+  int sta1_x = -150;
+  int sta1_y = 5;
+  double speed = 3;
+  uint32_t simuTime = 100;
   bool enablePcap = false;
   bool logDistance = false;
 
@@ -370,9 +299,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("manager", "PRC Manager", manager);
   cmd.AddValue ("rtsThreshold", "RTS threshold", rtsThreshold);
   cmd.AddValue ("outputFileName", "Output filename", outputFileName);
-  cmd.AddValue ("steps", "How many different distances to try", steps);
-  cmd.AddValue ("stepsTime", "Time on each step", stepsTime);
-  cmd.AddValue ("stepsSize", "Distance between steps", stepsSize);
+  cmd.AddValue ("simuTime", "Time to simulate", simuTime);
   cmd.AddValue ("maxPower", "Maximum available transmission level (dbm).", maxPower);
   cmd.AddValue ("minPower", "Minimum available transmission level (dbm).", minPower);
   cmd.AddValue ("powerLevels", "Number of transmission power levels available between "
@@ -382,16 +309,10 @@ int main (int argc, char *argv[])
   cmd.AddValue ("AP1_y", "Position of AP1 in y coordinate", ap1_y);
   cmd.AddValue ("STA1_x", "Position of STA1 in x coordinate", sta1_x);
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
+  cmd.AddValue ("speed", "Linear velocity for STA1", speed);
   cmd.AddValue ("enablePcap", "Enable pcap logging", enablePcap);
   cmd.AddValue ("logDistance", "Use distance instead of distance for statistics", logDistance);
   cmd.Parse (argc, argv);
-
-  if (steps == 0)
-    {
-      std::cout << "Exiting without running simulation; steps value of 0" << std::endl;
-    }
-
-  uint32_t simuTime = (steps + 1) * stepsTime;
 
   // Define the APs
   NodeContainer wifiApNodes;
@@ -447,15 +368,17 @@ int main (int argc, char *argv[])
   positionAlloc->Add (Vector (sta1_x, sta1_y, 0.0));
   NS_LOG_INFO ("Setting initial STA position to " << Vector (sta1_x, sta1_y, 0.0));
   mobility.SetPositionAllocator (positionAlloc);
-  mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  mobility.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
   mobility.Install (wifiApNodes.Get (0));
   mobility.Install (wifiStaNodes.Get (0));
+  NS_LOG_INFO ("Setting STA y-speed to " << speed);
+  wifiStaNodes.Get(0)->GetObject<ConstantVelocityMobilityModel>()->SetVelocity(Vector(speed, 0.0, 0.0));
 
   //Statistics counter
   NodeStatistics statistics = NodeStatistics (wifiApDevices, wifiStaDevices, logDistance);
 
   //Move the STA by stepsSize meters every stepsTime seconds
-  Simulator::Schedule (Seconds (0.5 + stepsTime), &NodeStatistics::AdvancePosition, &statistics, wifiStaNodes.Get (0), stepsSize, stepsTime);
+  //Simulator::Schedule (Seconds (0.5 + stepsTime), &NodeStatistics::AdvancePosition, &statistics, wifiStaNodes.Get (0), stepsSize, stepsTime);
 
   //Configure the IP stack
   InternetStackHelper stack;
@@ -470,7 +393,7 @@ int main (int argc, char *argv[])
   //Configure the CBR generator
   PacketSinkHelper sink (transportProtocol, InetSocketAddress (sinkAddress, port));
   ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
-  apps_sink.Start (Seconds (0.5));
+  apps_sink.Start (Seconds (0.0));
   apps_sink.Stop (Seconds (simuTime));
 
   ApplicationContainer apps_source;
@@ -479,7 +402,7 @@ int main (int argc, char *argv[])
     {
       OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
       onoff.SetConstantRate (DataRate ("54Mb/s"), packetSize);
-      onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.5)));
+      onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
       onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
       apps_source = onoff.Install (wifiApNodes.Get (0));
     }
@@ -489,7 +412,7 @@ int main (int argc, char *argv[])
       source.SetAttribute("MaxBytes", UintegerValue(0));
       apps_source = source.Install (wifiApNodes.Get (0));
     }
-  apps_source.Start (Seconds (0.5));
+  apps_source.Start (Seconds (0.0));
   apps_source.Stop (Seconds (simuTime));
 
   //------------------------------------------------------------
@@ -547,48 +470,9 @@ int main (int argc, char *argv[])
 
   Simulator::Stop (Seconds (simuTime));
   Simulator::Run ();
-
-  std::ofstream outfile (("throughput-" + outputFileName + ".plt").c_str ());
-  Gnuplot gnuplot = Gnuplot (("throughput-" + outputFileName + ".eps").c_str (), "Throughput");
-  gnuplot.SetTerminal ("post eps color enhanced");
-  gnuplot.SetExtra("set yrange [0:30]");
-  if (logDistance)
-    {
-      gnuplot.SetLegend ("Distance (meters)", "Throughput (Mb/s)");
-      gnuplot.SetTitle ("Throughput (AP to STA) vs distance");
-    }
-  else
-    {
-      gnuplot.SetLegend ("Time (seconds)", "Throughput (Mb/s)");
-      gnuplot.SetTitle ("Throughput (AP to STA) vs time");
-    }
-  gnuplot.AddDataset (statistics.GetDatafile ());
-  gnuplot.GenerateOutput (outfile);
-
-  if (manager.compare ("ns3::ParfWifiManager") == 0 ||
-      manager.compare ("ns3::AparfWifiManager") == 0 ||
-      manager.compare ("ns3::RrpaaWifiManager") == 0 ||
-      manager.compare ("ns3::PrcsWifiManager") == 0 ||
-      manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
-    {
-      std::ofstream outfile2 (("power-" + outputFileName + ".plt").c_str ());
-      gnuplot = Gnuplot (("power-" + outputFileName + ".eps").c_str (), "Average Transmit Power");
-      gnuplot.SetTerminal ("post eps color enhanced");
-      if (logDistance)
-        {
-          gnuplot.SetLegend ("Distance (meters)", "Power (mW)");
-          gnuplot.SetTitle ("Average transmit power (AP to STA) vs distance");
-        }
-      else
-        {
-          gnuplot.SetLegend ("Time (seconds)", "Power (mW)");
-          gnuplot.SetTitle ("Average transmit power (AP to STA) vs time");
-        }
-      gnuplot.AddDataset (statistics.GetPowerDatafile ());
-      gnuplot.GenerateOutput (outfile2);
-    }
-
   Simulator::Destroy ();
+
+  std::cout << statistics.totalTime << " " << statistics.totalBytes << " " << statistics.totalEnergy << std::endl;
 
   return 0;
 }
