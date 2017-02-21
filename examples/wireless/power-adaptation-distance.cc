@@ -112,8 +112,103 @@ NetDeviceContainer wifiDevices;
 std::string transportProtocol = "ns3::UdpSocketFactory";
 ApplicationContainer apps_source;
 
-static
-void StaMacAssoc (Mac48Address maddr)
+typedef std::vector<std::pair<Time,WifiMode> > TxTime;
+
+std::map<Mac48Address, uint32_t> actualPower;
+std::map<Mac48Address, WifiMode> actualMode;
+Ptr<WifiPhy> myPhy;
+double totalTime = 0;
+uint32_t totalBytes = 0;
+double totalEnergy = 0;
+TxTime timeTable;
+
+Time GetCalcTxTime (WifiMode mode)
+{
+  for (TxTime::const_iterator i = timeTable.begin (); i != timeTable.end (); i++)
+    {
+      if (mode == i->second)
+        {
+          return i->first;
+        }
+    }
+  NS_ASSERT (false);
+  return Seconds (0);
+}
+
+void PhyCallback (std::string path, Ptr<const Packet> packet)
+{
+  WifiMacHeader head;
+  packet->PeekHeader (head);
+  Mac48Address dest = head.GetAddr1 ();
+
+  if (head.GetType() == WIFI_MAC_DATA)
+    {
+      totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
+      totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
+    }
+}
+
+void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
+{
+  double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
+  double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
+  uint32_t nTxPower = myPhy->GetNTxPower ();
+  double dbm;
+  if (nTxPower > 1)
+    {
+      dbm = txPowerBaseDbm + power * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
+    }
+  else
+    {
+      NS_ASSERT_MSG (txPowerBaseDbm == txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
+      dbm = txPowerBaseDbm;
+    }
+  actualPower[dest] = dbm;
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << (int)power);
+}
+
+void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
+{
+  double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
+  double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
+  uint32_t nTxPower = myPhy->GetNTxPower ();
+  double dbm;
+  if (nTxPower > 1)
+    {
+      dbm = txPowerBaseDbm + power * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
+    }
+  else
+    {
+      NS_ASSERT_MSG (txPowerBaseDbm == txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
+      dbm = txPowerBaseDbm;
+    }
+  actualPower[dest] = dbm;
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " power: " << (int)power);
+}
+
+void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
+{
+  actualMode[dest] = myPhy->GetMode (rate);
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
+}
+
+void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
+{
+  actualMode[dest] = myPhy->GetMode (rate);
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
+}
+
+void CstCallback (std::string path, double cst, Mac48Address dest)
+{
+  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " CST " <<  cst);
+}
+
+void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from)
+{
+  totalBytes += packet->GetSize ();
+}
+
+static void StaMacAssoc (Mac48Address maddr)
 {
   //Configure the IP stack
   InternetStackHelper stack;
@@ -140,182 +235,14 @@ void StaMacAssoc (Mac48Address maddr)
       apps_source = source.Install (wifiApNodes.Get (0));
   }
   apps_source.Start(Seconds(0.0));
+
+  Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
+                   MakeCallback (&RxCallback));
 }
 
-static
-void StaMacDeAssoc (Mac48Address maddr)
+static void StaMacDeAssoc (Mac48Address maddr)
 {
   apps_source.Stop(Seconds(0.0));
-}
-
-class NodeStatistics
-{
-public:
-  NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas, bool logDistance);
-
-  void PhyCallback (std::string path, Ptr<const Packet> packet);
-  void RxCallback (std::string path, Ptr<const Packet> packet, const Address &from);
-  void PowerCallback (std::string path, uint8_t power, Mac48Address dest);
-  void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest);
-  void RateCallback (std::string path, uint32_t rate, Mac48Address dest);
-  void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest);
-
-  typedef std::vector<std::pair<Time,WifiMode> > TxTime;
-  void SetupPhy (Ptr<WifiPhy> phy);
-  Time GetCalcTxTime (WifiMode mode);
-
-  std::map<Mac48Address, uint32_t> actualPower;
-  std::map<Mac48Address, WifiMode> actualMode;
-  uint32_t totalBytes;
-  double totalEnergy;
-  double totalTime;
-  Ptr<WifiPhy> myPhy;
-  TxTime timeTable;
-  bool m_logDistance;
-};
-
-NodeStatistics::NodeStatistics (NetDeviceContainer aps, NetDeviceContainer stas, bool logDistance)
-{
-  Ptr<NetDevice> device = aps.Get (0);
-  Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
-  Ptr<WifiPhy> phy = wifiDevice->GetPhy ();
-  myPhy = phy;
-  SetupPhy (phy);
-  for (uint32_t j = 0; j < stas.GetN (); j++)
-    {
-      Ptr<NetDevice> staDevice = stas.Get (j);
-      Ptr<WifiNetDevice> wifiStaDevice = DynamicCast<WifiNetDevice> (staDevice);
-      Mac48Address addr = wifiStaDevice->GetMac ()->GetAddress ();
-      actualPower[addr] = 17;
-      actualMode[addr] = phy->GetMode (0);
-    }
-  actualMode[Mac48Address ("ff:ff:ff:ff:ff:ff")] = phy->GetMode (0);
-  totalEnergy = 0;
-  totalTime = 0;
-  totalBytes = 0;
-  m_logDistance = logDistance;
-}
-
-void
-NodeStatistics::SetupPhy (Ptr<WifiPhy> phy)
-{
-  uint32_t nModes = phy->GetNModes ();
-  for (uint32_t i = 0; i < nModes; i++)
-    {
-      WifiMode mode = phy->GetMode (i);
-      WifiTxVector txVector;
-      txVector.SetMode (mode);
-      timeTable.push_back (std::make_pair (phy->CalculateTxDuration (packetSize, txVector, WIFI_PREAMBLE_LONG, phy->GetFrequency (), 0, 0), mode));
-    }
-}
-
-Time
-NodeStatistics::GetCalcTxTime (WifiMode mode)
-{
-  for (TxTime::const_iterator i = timeTable.begin (); i != timeTable.end (); i++)
-    {
-      if (mode == i->second)
-        {
-          return i->first;
-        }
-    }
-  NS_ASSERT (false);
-  return Seconds (0);
-}
-
-void
-NodeStatistics::PhyCallback (std::string path, Ptr<const Packet> packet)
-{
-  WifiMacHeader head;
-  packet->PeekHeader (head);
-  Mac48Address dest = head.GetAddr1 ();
-
-  if (head.GetType() == WIFI_MAC_DATA)
-    {
-      totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
-      totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
-    }
-}
-
-void
-NodeStatistics::PowerCallback (std::string path, uint8_t power, Mac48Address dest)
-{
-  double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
-  double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
-  uint32_t nTxPower = myPhy->GetNTxPower ();
-  double dbm;
-  if (nTxPower > 1)
-    {
-      dbm = txPowerBaseDbm + power * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
-    }
-  else
-    {
-      NS_ASSERT_MSG (txPowerBaseDbm == txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
-      dbm = txPowerBaseDbm;
-    }
-  actualPower[dest] = dbm;
-}
-
-void
-NodeStatistics::BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
-{
-  double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
-  double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
-  uint32_t nTxPower = myPhy->GetNTxPower ();
-  double dbm;
-  if (nTxPower > 1)
-    {
-      dbm = txPowerBaseDbm + power * (txPowerEndDbm - txPowerBaseDbm) / (nTxPower - 1);
-    }
-  else
-    {
-      NS_ASSERT_MSG (txPowerBaseDbm == txPowerEndDbm, "cannot have TxPowerEnd != TxPowerStart with TxPowerLevels == 1");
-      dbm = txPowerBaseDbm;
-    }
-  actualPower[dest] = dbm;
-}
-
-void
-NodeStatistics::RateCallback (std::string path, uint32_t rate, Mac48Address dest)
-{
-  actualMode[dest] = myPhy->GetMode (rate);
-}
-
-void
-NodeStatistics::BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
-{
-  actualMode[dest] = myPhy->GetMode (rate);
-}
-
-void
-NodeStatistics::RxCallback (std::string path, Ptr<const Packet> packet, const Address &from)
-{
-  totalBytes += packet->GetSize ();
-}
-
-void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
-{
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Power " << (int)power);
-}
-
-void BluesPowerCallback (std::string path, std::string type, uint8_t power, Mac48Address dest)
-{
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " power: " << (int)power);
-}
-
-void RateCallback (std::string path, uint32_t rate, Mac48Address dest)
-{
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " Rate " <<  rate);
-}
-
-void CstCallback (std::string path, double cst, Mac48Address dest)
-{
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " " << dest << " CST " <<  cst);
-}
-
-void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48Address dest)
-{
-  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
 }
 
 int main (int argc, char *argv[])
@@ -334,7 +261,6 @@ int main (int argc, char *argv[])
   double speed = 3;
   uint32_t simuTime = 100;
   bool enablePcap = false;
-  bool logDistance = false;
 
   CommandLine cmd;
   cmd.AddValue ("manager", "PRC Manager", manager);
@@ -352,7 +278,6 @@ int main (int argc, char *argv[])
   cmd.AddValue ("STA1_y", "Position of STA1 in y coordinate", sta1_y);
   cmd.AddValue ("speed", "Linear velocity for STA1", speed);
   cmd.AddValue ("enablePcap", "Enable pcap logging", enablePcap);
-  cmd.AddValue ("logDistance", "Use distance instead of distance for statistics", logDistance);
   cmd.Parse (argc, argv);
 
   // Define the APs
@@ -407,8 +332,24 @@ int main (int argc, char *argv[])
   NS_LOG_INFO ("Setting STA y-speed to " << speed);
   wifiStaNodes.Get(0)->GetObject<ConstantVelocityMobilityModel>()->SetVelocity(Vector(speed, 0.0, 0.0));
 
-  //Statistics counter
-  NodeStatistics statistics = NodeStatistics (wifiApDevices, wifiStaDevices, logDistance);
+  Ptr<NetDevice> device = wifiApDevices.Get (0);
+  Ptr<WifiNetDevice> wifiDevice = DynamicCast<WifiNetDevice> (device);
+  myPhy = wifiDevice->GetPhy ();
+  uint32_t nModes = myPhy->GetNModes ();
+  for (uint32_t i = 0; i < nModes; i++) {
+    WifiMode mode = myPhy->GetMode (i);
+    WifiTxVector txVector;
+    txVector.SetMode (mode);
+    timeTable.push_back (std::make_pair (myPhy->CalculateTxDuration (packetSize, txVector, WIFI_PREAMBLE_LONG, myPhy->GetFrequency (), 0, 0), mode));
+  }
+  for (uint32_t j = 0; j < wifiStaDevices.GetN (); j++) {
+    Ptr<NetDevice> staDevice = wifiStaDevices.Get (j);
+    Ptr<WifiNetDevice> wifiStaDevice = DynamicCast<WifiNetDevice> (staDevice);
+    Mac48Address addr = wifiStaDevice->GetMac ()->GetAddress ();
+    actualPower[addr] = 17;
+    actualMode[addr] = myPhy->GetMode (0);
+  }
+  actualMode[Mac48Address ("ff:ff:ff:ff:ff:ff")] = myPhy->GetMode (0);
 
   //------------------------------------------------------------
   //-- Setup stats and data collection
@@ -418,60 +359,36 @@ int main (int argc, char *argv[])
   wifiStaDevice->GetMac()->TraceConnectWithoutContext("Assoc", MakeCallback(&StaMacAssoc));
   wifiStaDevice->GetMac()->TraceConnectWithoutContext("DeAssoc", MakeCallback(&StaMacDeAssoc));
 
-  //Register packet receptions to calculate throughput
-  Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
-                   MakeCallback (&NodeStatistics::RxCallback, &statistics));
+  //Register packet receptions to calculate throughput/energy
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
+                   MakeCallback (&PhyCallback));
 
   //Register power and rate changes to calculate the Average Transmit Power
-  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
-    {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                         MakeCallback (&NodeStatistics::BluesPowerCallback, &statistics));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                         MakeCallback (&NodeStatistics::BluesRateCallback, &statistics));
-    }
-  else
-    {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                   MakeCallback (&NodeStatistics::PowerCallback, &statistics));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                         MakeCallback (&NodeStatistics::RateCallback, &statistics));
-    }
+  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0) {
+    Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                       MakeCallback (&BluesPowerCallback));
+    Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                       MakeCallback (&BluesRateCallback));
+  } else {
+    Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
+                     MakeCallback (&PowerCallback));
+    Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
+                     MakeCallback (&RateCallback));
+  }
 
-  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
-                   MakeCallback (&NodeStatistics::PhyCallback, &statistics));
-
-  //Callbacks to print every change of power and rate
-  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0)
-    {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                         MakeCallback (BluesPowerCallback));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                       MakeCallback (BluesRateCallback));
-    }
-  else
-    {
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
-                         MakeCallback (PowerCallback));
-      Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
-                       MakeCallback (RateCallback));
-    }
-  if (manager.compare ("ns3::PrcsWifiManager") == 0)
-      {
-	Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/CstChange",
-			 MakeCallback (CstCallback));
-      }
+  if (manager.compare ("ns3::PrcsWifiManager") == 0) {
+  	Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/CstChange",
+  			             MakeCallback (CstCallback));
+  }
 
   if (enablePcap)
-    {
-      wifiPhy.EnablePcapAll (outputFileName);
-    }
+    wifiPhy.EnablePcapAll (outputFileName);
 
   Simulator::Stop (Seconds (simuTime));
   Simulator::Run ();
   Simulator::Destroy ();
 
-  std::cout << statistics.totalTime << " " << statistics.totalBytes << " " << statistics.totalEnergy << std::endl;
+  std::cout << totalTime << " " << totalBytes << " " << totalEnergy << std::endl;
 
   return 0;
 }
