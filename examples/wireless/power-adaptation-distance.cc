@@ -99,7 +99,6 @@
 #include "ns3/flow-monitor-module.h"
 
 using namespace ns3;
-using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("PowerAdaptationDistance");
 
@@ -276,6 +275,20 @@ void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
 }
 
+ApplicationContainer apps_source;
+
+static
+void StaMacAssoc (Mac48Address maddr)
+{
+  std::cerr << "association" << std::endl;
+}
+
+static
+void StaMacDeAssoc (Mac48Address maddr)
+{
+  std::cerr << "deassociation" << std::endl;
+}
+
 int main (int argc, char *argv[])
 {
   double maxPower = 17;
@@ -340,8 +353,7 @@ int main (int argc, char *argv[])
   wifiPhy.Set ("TxPowerEnd", DoubleValue (maxPower));
 
   Ssid ssid = Ssid ("AP");
-  wifiMac.SetType ("ns3::StaWifiMac",
-                   "Ssid", SsidValue (ssid),
+  wifiMac.SetType ("ns3::StaWifiMac", "Ssid", SsidValue (ssid),
                    "ActiveProbing", BooleanValue (false));
   wifiStaDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiStaNodes.Get (0)));
 
@@ -352,8 +364,7 @@ int main (int argc, char *argv[])
   wifiPhy.Set ("TxPowerLevels", UintegerValue (powerLevels));
 
   ssid = Ssid ("AP");
-  wifiMac.SetType ("ns3::ApWifiMac",
-                   "Ssid", SsidValue (ssid));
+  wifiMac.SetType ("ns3::ApWifiMac", "Ssid", SsidValue (ssid));
   wifiApDevices.Add (wifi.Install (wifiPhy, wifiMac, wifiApNodes.Get (0)));
 
   wifiDevices.Add (wifiStaDevices);
@@ -396,28 +407,27 @@ int main (int argc, char *argv[])
   apps_sink.Start (Seconds (0.0));
   apps_sink.Stop (Seconds (simuTime));
 
-  ApplicationContainer apps_source;
-
-  if (transportProtocol.compare("ns3::UdpSocketFactory") == 0)
-    {
+  if (transportProtocol.compare("ns3::UdpSocketFactory") == 0) {
       OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
       onoff.SetConstantRate (DataRate ("54Mb/s"), packetSize);
       onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
       onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
       apps_source = onoff.Install (wifiApNodes.Get (0));
-    }
-  else
-    {
+  } else {
       BulkSendHelper source ("ns3::TcpSocketFactory", InetSocketAddress (sinkAddress, port));
       source.SetAttribute("MaxBytes", UintegerValue(0));
       apps_source = source.Install (wifiApNodes.Get (0));
-    }
+  }
   apps_source.Start (Seconds (0.0));
   apps_source.Stop (Seconds (simuTime));
 
   //------------------------------------------------------------
   //-- Setup stats and data collection
   //--------------------------------------------
+
+  Ptr<WifiNetDevice> wifiStaDevice = DynamicCast<WifiNetDevice> (wifiStaDevices.Get (0));
+  wifiStaDevice->GetMac()->TraceConnectWithoutContext("Assoc", MakeCallback(&StaMacAssoc));
+  wifiStaDevice->GetMac()->TraceConnectWithoutContext("DeAssoc", MakeCallback(&StaMacDeAssoc));
 
   //Register packet receptions to calculate throughput
   Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
