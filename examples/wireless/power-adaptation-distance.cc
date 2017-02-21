@@ -83,6 +83,13 @@
  * \code{.sh}
  *   export NS_LOG=PowerAdaptationDistance=level_info
  * \endcode
+ *
+ * Managers:
+ *  - ns3::ParfWifiManager
+ *  - ns3::AparfWifiManager
+ *  - ns3::RrpaaWifiManager
+ *  - ns3::PrcsWifiManager
+ *  - ns3::MinstrelBluesWifiManager
  */
 
 #include <sstream>
@@ -117,6 +124,8 @@ typedef std::vector<std::pair<Time,WifiMode> > TxTime;
 std::map<Mac48Address, uint32_t> actualPower;
 std::map<Mac48Address, WifiMode> actualMode;
 Ptr<WifiPhy> myPhy;
+double init = 0;
+double end = 0;
 double totalTime = 0;
 uint32_t totalBytes = 0;
 double totalEnergy = 0;
@@ -141,11 +150,10 @@ void PhyCallback (std::string path, Ptr<const Packet> packet)
   packet->PeekHeader (head);
   Mac48Address dest = head.GetAddr1 ();
 
-  if (head.GetType() == WIFI_MAC_DATA)
-    {
-      totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
-      totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
-    }
+  if (head.GetType() == WIFI_MAC_DATA) {
+    totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
+    totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
+  }
 }
 
 void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
@@ -235,6 +243,7 @@ static void StaMacAssoc (Mac48Address maddr)
       apps_source = source.Install (wifiApNodes.Get (0));
   }
   apps_source.Start(Seconds(0.0));
+  init = Simulator::Now ().GetSeconds ();
 
   Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
                    MakeCallback (&RxCallback));
@@ -242,6 +251,7 @@ static void StaMacAssoc (Mac48Address maddr)
 
 static void StaMacDeAssoc (Mac48Address maddr)
 {
+  end = Simulator::Now ().GetSeconds ();
   apps_source.Stop(Seconds(0.0));
 }
 
@@ -388,7 +398,7 @@ int main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
 
-  std::cout << totalTime << " " << totalBytes << " " << totalEnergy << std::endl;
+  std::cout << end-init << " " << totalTime << " " << totalBytes << " " << totalEnergy << std::endl;
 
   return 0;
 }
