@@ -104,6 +104,49 @@ NS_LOG_COMPONENT_DEFINE ("PowerAdaptationDistance");
 
 // packet size generated at the AP
 static const uint32_t packetSize = 1420;
+NodeContainer wifiApNodes;
+NodeContainer wifiStaNodes;
+NetDeviceContainer wifiApDevices;
+NetDeviceContainer wifiStaDevices;
+NetDeviceContainer wifiDevices;
+std::string transportProtocol = "ns3::UdpSocketFactory";
+ApplicationContainer apps_source;
+
+static
+void StaMacAssoc (Mac48Address maddr)
+{
+  //Configure the IP stack
+  InternetStackHelper stack;
+  stack.Install (wifiApNodes);
+  stack.Install (wifiStaNodes);
+  Ipv4AddressHelper address;
+  address.SetBase ("10.1.1.0", "255.255.255.0");
+  Ipv4InterfaceContainer i = address.Assign (wifiDevices);
+  Ipv4Address sinkAddress = i.GetAddress (0);
+  uint16_t port = 9;
+
+  //Configure the CBR generator
+  PacketSinkHelper sink (transportProtocol, InetSocketAddress (sinkAddress, port));
+  ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
+  apps_sink.Start (Seconds (0.0));
+
+  if (transportProtocol.compare("ns3::UdpSocketFactory") == 0) {
+      OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
+      onoff.SetConstantRate (DataRate ("54Mb/s"), packetSize);
+      apps_source = onoff.Install (wifiApNodes.Get (0));
+  } else {
+      BulkSendHelper source ("ns3::TcpSocketFactory", InetSocketAddress (sinkAddress, port));
+      source.SetAttribute("MaxBytes", UintegerValue(0));
+      apps_source = source.Install (wifiApNodes.Get (0));
+  }
+  apps_source.Start(Seconds(0.0));
+}
+
+static
+void StaMacDeAssoc (Mac48Address maddr)
+{
+  apps_source.Stop(Seconds(0.0));
+}
 
 class NodeStatistics
 {
@@ -275,20 +318,6 @@ void BluesRateCallback (std::string path, std::string type, uint32_t rate, Mac48
   NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " station: " << dest << ", frame sent with " << type << " rate: " <<  rate);
 }
 
-ApplicationContainer apps_source;
-
-static
-void StaMacAssoc (Mac48Address maddr)
-{
-  std::cerr << "association" << std::endl;
-}
-
-static
-void StaMacDeAssoc (Mac48Address maddr)
-{
-  std::cerr << "deassociation" << std::endl;
-}
-
 int main (int argc, char *argv[])
 {
   double maxPower = 17;
@@ -298,7 +327,6 @@ int main (int argc, char *argv[])
   uint32_t rtsThreshold = 2346;
   std::string manager = "ns3::ParfWifiManager";
   std::string outputFileName = "parf";
-  std::string transportProtocol = "ns3::UdpSocketFactory";
   int ap1_x = 0;
   int ap1_y = 0;
   int sta1_x = -150;
@@ -328,11 +356,9 @@ int main (int argc, char *argv[])
   cmd.Parse (argc, argv);
 
   // Define the APs
-  NodeContainer wifiApNodes;
   wifiApNodes.Create (1);
 
   //Define the STAs
-  NodeContainer wifiStaNodes;
   wifiStaNodes.Create (1);
 
   WifiHelper wifi = WifiHelper::Default ();
@@ -342,10 +368,6 @@ int main (int argc, char *argv[])
   YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
 
   wifiPhy.SetChannel (wifiChannel.Create ());
-
-  NetDeviceContainer wifiApDevices;
-  NetDeviceContainer wifiStaDevices;
-  NetDeviceContainer wifiDevices;
 
   //Configure the STA node
   wifi.SetRemoteStationManager ("ns3::MinstrelWifiManager", "RtsCtsThreshold", UintegerValue (rtsThreshold));
@@ -387,39 +409,6 @@ int main (int argc, char *argv[])
 
   //Statistics counter
   NodeStatistics statistics = NodeStatistics (wifiApDevices, wifiStaDevices, logDistance);
-
-  //Move the STA by stepsSize meters every stepsTime seconds
-  //Simulator::Schedule (Seconds (0.5 + stepsTime), &NodeStatistics::AdvancePosition, &statistics, wifiStaNodes.Get (0), stepsSize, stepsTime);
-
-  //Configure the IP stack
-  InternetStackHelper stack;
-  stack.Install (wifiApNodes);
-  stack.Install (wifiStaNodes);
-  Ipv4AddressHelper address;
-  address.SetBase ("10.1.1.0", "255.255.255.0");
-  Ipv4InterfaceContainer i = address.Assign (wifiDevices);
-  Ipv4Address sinkAddress = i.GetAddress (0);
-  uint16_t port = 9;
-
-  //Configure the CBR generator
-  PacketSinkHelper sink (transportProtocol, InetSocketAddress (sinkAddress, port));
-  ApplicationContainer apps_sink = sink.Install (wifiStaNodes.Get (0));
-  apps_sink.Start (Seconds (0.0));
-  apps_sink.Stop (Seconds (simuTime));
-
-  if (transportProtocol.compare("ns3::UdpSocketFactory") == 0) {
-      OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (sinkAddress, port));
-      onoff.SetConstantRate (DataRate ("54Mb/s"), packetSize);
-      onoff.SetAttribute ("StartTime", TimeValue (Seconds (0.0)));
-      onoff.SetAttribute ("StopTime", TimeValue (Seconds (simuTime)));
-      apps_source = onoff.Install (wifiApNodes.Get (0));
-  } else {
-      BulkSendHelper source ("ns3::TcpSocketFactory", InetSocketAddress (sinkAddress, port));
-      source.SetAttribute("MaxBytes", UintegerValue(0));
-      apps_source = source.Install (wifiApNodes.Get (0));
-  }
-  apps_source.Start (Seconds (0.0));
-  apps_source.Stop (Seconds (simuTime));
 
   //------------------------------------------------------------
   //-- Setup stats and data collection
