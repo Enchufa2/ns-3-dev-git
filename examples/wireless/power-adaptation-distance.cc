@@ -266,7 +266,7 @@ int main (int argc, char *argv[])
   std::string outputFileName = "parf";
   int ap1_x = 0;
   int ap1_y = 0;
-  int sta1_x = -150;
+  int sta1_x = -140;
   int sta1_y = 5;
   double speed = 3;
   uint32_t simuTime = 100;
