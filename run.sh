@@ -14,4 +14,4 @@ for i in $MANAGERS; do
     sem -j+0 job $i 2>/dev/null
   done
 done
-sem --wait
+sem --wait 2>/dev/null
