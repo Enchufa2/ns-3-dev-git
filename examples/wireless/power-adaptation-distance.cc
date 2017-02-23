@@ -117,18 +117,21 @@ class EnergyModel
 		double getTotalEnergy();
 
 	private:
+		std::string m_device;
 		double m_intercept_tx;
 		double m_mcs_beta_tx;
 		double m_txp_beta;
 		double m_intercept_rx;
 		double m_mcs_beta_rx;
-
+		
 		double m_total_energy;
 
 };
 
 EnergyModel::EnergyModel ( std::string device )
 {
+	m_device = device;
+
 	if (device.compare("htc"))
 	{
 		m_intercept_tx = 0.354;
@@ -232,7 +235,7 @@ Time GetCalcTxTime (WifiMode mode)
   return Seconds (0);
 }
 
-void PhyCallback (std::string path, Ptr<const Packet> packet)
+void PhyTxCallback (std::string path, Ptr<const Packet> packet)
 {
   WifiMacHeader head;
   packet->PeekHeader (head);
@@ -243,12 +246,34 @@ void PhyCallback (std::string path, Ptr<const Packet> packet)
 
     for(int i=0; i < models.size(); i++)
     {
-	    models.at(i).computeModel( true, actualMode[dest].GetPhyRate(), actualPower[dest] );
-	    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: rate " << actualMode[dest].GetPhyRate() << " Power " << actualPower[dest]);
+	    models.at(i).computeModel( true, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest] );
+	    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
     }
 
+    is_ack = true;
     totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
   }
+}
+
+void PhyRxCallback (std::string path, Ptr<const Packet> packet)
+{
+	  WifiMacHeader head;
+	  packet->PeekHeader (head);
+	  Mac48Address dest = head.GetAddr2 ();
+
+	  if (head.IsAck() && is_ack) {
+//		  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: ACK rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
+	      is_ack = false;
+//	      totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
+
+	      for(int i=0; i < models.size(); i++)
+	      {
+	                models.at(i).computeModel( false, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest] );
+	                NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: ACK rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
+	      }
+
+//	      totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
+        }
 }
 
 void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
@@ -474,8 +499,10 @@ int main (int argc, char *argv[])
 
   //Register packet receptions to calculate throughput/energy
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
-                   MakeCallback (&PhyCallback));
+                   MakeCallback (&PhyTxCallback));
 
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxBegin",
+		   MakeCallback (&PhyRxCallback));
   //Register power and rate changes to calculate the Average Transmit Power
   if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0) {
     Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
