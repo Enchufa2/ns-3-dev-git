@@ -109,92 +109,66 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("PowerAdaptationDistance");
 
-class EnergyModel
-{
+class EnergyModel {
 	public:
-		EnergyModel ( std::string device );
-		void computeModel( bool tx, int mcs, int txp, double time  );
-		double getTotalEnergy();
+		EnergyModel (std::string device);
+
+    std::string getDevice() { return m_device; }
+		double getTotalEnergy() { return m_total_energy; }
+
+    void computeModel(double time, int mcs, int txp) {
+    	txp = pow(10, txp/10); // Transform dBm to mW
+    	m_total_energy += (m_intercept_tx + m_mcs_beta_tx*mcs + m_txp_beta*txp) * time;
+    }
+    void computeModel(double time, int mcs) {
+    	m_total_energy += (m_intercept_rx + m_mcs_beta_rx*mcs) * time;
+    }
 
 	private:
 		std::string m_device;
-		double m_intercept_tx;
-		double m_mcs_beta_tx;
-		double m_txp_beta;
-		double m_intercept_rx;
-		double m_mcs_beta_rx;
-		
-		double m_total_energy;
-
+		double m_intercept_tx;  // W
+		double m_mcs_beta_tx;   // Mbps
+		double m_txp_beta;      // mW
+		double m_intercept_rx;  // W
+		double m_mcs_beta_rx;   // Mbps
+		double m_total_energy;  // J
 };
 
-EnergyModel::EnergyModel ( std::string device )
+EnergyModel::EnergyModel (std::string device)
 {
 	m_device = device;
-
-	if (device.compare("htc"))
-	{
+	if (device.compare("htc") == 0) {
 		m_intercept_tx = 0.354;
 		m_mcs_beta_tx = 0.0052;
 		m_txp_beta = 0.021;
 		m_intercept_rx = 0.013;
 		m_mcs_beta_rx = 0.00643;
-	}
-
-	else if (device.compare("linksys"))
-	{
+	} else if (device.compare("linksys") == 0) {
 		m_intercept_tx = 0.54;
 		m_mcs_beta_tx = 0.0028;
 		m_txp_beta = 0.075;
 		m_intercept_rx = 0.14;
 		m_mcs_beta_rx = 0.0130;
-	}
-	else if (device.compare("rpi"))
-	{
-                m_intercept_tx = 0.478;
+	} else if (device.compare("rpi") == 0) {
+    m_intercept_tx = 0.478;
 		m_mcs_beta_tx = 0.0008;
 		m_txp_beta = 0.044;
 		m_intercept_rx = -0.0062;
 		m_mcs_beta_rx = 0.00146;
-	}
-	else if (device.compare("galaxy"))
-	{
+	} else if (device.compare("galaxy") == 0) {
 		m_intercept_tx = 0.572;
-	        m_mcs_beta_tx = 0.0017;
-	        m_txp_beta = 0.0105;
-	        m_intercept_rx = 0.0409;
-	        m_mcs_beta_rx = 0.00173;
-	}
-        else if (device.compare("soekris"))
-        {
-                m_intercept_tx = 0.17;
-                m_mcs_beta_tx = 0.017;
-                m_txp_beta = 0.0101;
-                m_intercept_rx = 0.010;
-                m_mcs_beta_rx = 0.0237;
-        }
-
+    m_mcs_beta_tx = 0.0017;
+    m_txp_beta = 0.0105;
+    m_intercept_rx = 0.0409;
+    m_mcs_beta_rx = 0.00173;
+	} else if (device.compare("soekris") == 0) {
+    m_intercept_tx = 0.17;
+    m_mcs_beta_tx = 0.017;
+    m_txp_beta = 0.101;
+    m_intercept_rx = 0.010;
+    m_mcs_beta_rx = 0.0237;
+  }
 	m_total_energy = 0;
-}
-
-void EnergyModel::computeModel( bool tx, int mcs, int txp, double time)
-{
-	// Transform dbm in mW
-	txp = pow(10, txp/10);
-
-	if (tx)
-	{
-		m_total_energy += (m_intercept_tx + m_mcs_beta_tx*mcs + m_txp_beta*txp)*time;
-	}
-	else
-	{
-		m_total_energy += (m_intercept_rx + m_mcs_beta_rx*mcs)*time;
-	}
-}
-
-double EnergyModel::getTotalEnergy()
-{
-	return m_total_energy;
 }
 
 // packet size generated at the AP
@@ -220,17 +194,14 @@ double totalEnergy = 0;
 TxTime timeTable;
 std::vector<EnergyModel> models;
 
-bool is_ack = false;
+double t = 0;
 
 Time GetCalcTxTime (WifiMode mode)
 {
-  for (TxTime::const_iterator i = timeTable.begin (); i != timeTable.end (); i++)
-    {
-      if (mode == i->second)
-        {
-          return i->first;
-        }
-    }
+  for (TxTime::const_iterator i = timeTable.begin (); i != timeTable.end (); i++) {
+    if (mode == i->second)
+      return i->first;
+  }
   NS_ASSERT (false);
   return Seconds (0);
 }
@@ -242,44 +213,42 @@ void PhyTxCallback (std::string path, Ptr<const Packet> packet)
   Mac48Address dest = head.GetAddr1 ();
 
   if (head.GetType() == WIFI_MAC_DATA) {
-    totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
-
-    for(int i=0; i < models.size(); i++)
-    {
-	    models.at(i).computeModel( true, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest], GetCalcTxTime (actualMode[dest]).GetSeconds () );
-	    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
-    }
-
-    is_ack = true;
-    totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
+    t = GetCalcTxTime (actualMode[dest]).GetSeconds ();
+    for (int i=0; i < models.size(); i++)
+	    models.at(i).computeModel(t, actualMode[dest].GetDataRate()/1e6, actualPower[dest]);
+	  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " DATA: t " << t << ", rate " << actualMode[dest].GetDataRate()/1e6 << ", power " << actualPower[dest]);
+    totalTime += t;
   }
 }
 
-void PhyRxCallback (std::string path, Ptr<const Packet> packet)
+void PhyRxBeginCallback (std::string path, Ptr<const Packet> packet)
 {
-	  WifiMacHeader head;
-	  packet->PeekHeader (head);
-	  Mac48Address dest = head.GetAddr2 ();
+  WifiMacHeader head;
+  packet->PeekHeader (head);
 
-	  if (head.IsAck() && is_ack) {
-//		  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: ACK rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
-	      is_ack = false;
-//	      totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
+  if (head.IsAck() && t > 0)
+    t = Simulator::Now().GetSeconds();
+}
 
-	      for(int i=0; i < models.size(); i++)
-	      {
-	                models.at(i).computeModel( false, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest], GetCalcTxTime (actualMode[dest]).GetSeconds ());
-	                NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: ACK rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
-	      }
+void PhyRxOkCallback (std::string path, Ptr<const Packet> packet, double snr, WifiMode mode, enum WifiPreamble preamble)
+{
+  WifiMacHeader head;
+  packet->PeekHeader (head);
 
-//	      totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
-        }
+  if (head.IsAck() && t > 0) {
+    t = Simulator::Now().GetSeconds() - t;
+    for (int i=0; i < models.size(); i++)
+      models.at(i).computeModel(t, mode.GetDataRate()/1e6);
+    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " ACK: t " << t << ", rate " << mode.GetDataRate()/1e6);
+    totalTime += t;
+    t = 0;
+  }
 }
 
 void PowerCallback (std::string path, uint8_t power, Mac48Address dest)
 {
-  double   txPowerBaseDbm = myPhy->GetTxPowerStart ();
-  double   txPowerEndDbm = myPhy->GetTxPowerEnd ();
+  double txPowerBaseDbm = myPhy->GetTxPowerStart ();
+  double txPowerEndDbm = myPhy->GetTxPowerEnd ();
   uint32_t nTxPower = myPhy->GetNTxPower ();
   double dbm;
   if (nTxPower > 1)
@@ -413,10 +382,7 @@ int main (int argc, char *argv[])
   std::string devices[] = {"htc", "linksys","rpi", "galaxy", "soekris"};
 
   for (int i=0; i < (sizeof(devices)/sizeof(devices[0])); i++)
-  {
-        EnergyModel model = EnergyModel(devices[i]);
-        models.push_back( model );
-  }
+    models.push_back(EnergyModel(devices[i]));
 
   // Define the APs
   wifiApNodes.Create (1);
@@ -485,9 +451,9 @@ int main (int argc, char *argv[])
     Ptr<WifiNetDevice> wifiStaDevice = DynamicCast<WifiNetDevice> (staDevice);
     Mac48Address addr = wifiStaDevice->GetMac ()->GetAddress ();
     actualPower[addr] = 17;
-    actualMode[addr] = myPhy->GetMode (0);
+    actualMode[addr] = myPhy->GetMode(0);
   }
-  actualMode[Mac48Address ("ff:ff:ff:ff:ff:ff")] = myPhy->GetMode (0);
+  actualMode[Mac48Address ("ff:ff:ff:ff:ff:ff")] = myPhy->GetMode(0);
 
   //------------------------------------------------------------
   //-- Setup stats and data collection
@@ -500,9 +466,11 @@ int main (int argc, char *argv[])
   //Register packet receptions to calculate throughput/energy
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin",
                    MakeCallback (&PhyTxCallback));
-
   Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxBegin",
-		   MakeCallback (&PhyRxCallback));
+		               MakeCallback (&PhyRxBeginCallback));
+  Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/State/RxOk",
+                   MakeCallback (&PhyRxOkCallback));
+
   //Register power and rate changes to calculate the Average Transmit Power
   if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0) {
     Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
@@ -528,7 +496,14 @@ int main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
 
-  std::cout << end-init << " " << totalTime << " " << totalBytes << " " << totalEnergy << std::endl;
+  for (int i=0; i < models.size(); i++)
+    std::cout <<
+      end-init << " " <<
+      totalTime << " " <<
+      totalBytes << " " <<
+      models.at(i).getDevice() << " " <<
+      models.at(i).getTotalEnergy() <<
+    std::endl;
 
   return 0;
 }
