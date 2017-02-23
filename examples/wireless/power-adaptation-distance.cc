@@ -113,7 +113,7 @@ class EnergyModel
 {
 	public:
 		EnergyModel ( std::string device );
-		void computeModel( bool tx, int mcs, int txp  );
+		void computeModel( bool tx, int mcs, int txp, double time  );
 		double getTotalEnergy();
 
 	private:
@@ -177,18 +177,18 @@ EnergyModel::EnergyModel ( std::string device )
 	m_total_energy = 0;
 }
 
-void EnergyModel::computeModel( bool tx, int mcs, int txp)
+void EnergyModel::computeModel( bool tx, int mcs, int txp, double time)
 {
 	// Transform dbm in mW
 	txp = pow(10, txp/10);
 
 	if (tx)
 	{
-		m_total_energy += m_intercept_tx + m_mcs_beta_tx*mcs + m_txp_beta*txp;
+		m_total_energy += (m_intercept_tx + m_mcs_beta_tx*mcs + m_txp_beta*txp)*time;
 	}
 	else
 	{
-		m_total_energy += m_intercept_rx + m_mcs_beta_rx*mcs;
+		m_total_energy += (m_intercept_rx + m_mcs_beta_rx*mcs)*time;
 	}
 }
 
@@ -246,7 +246,7 @@ void PhyTxCallback (std::string path, Ptr<const Packet> packet)
 
     for(int i=0; i < models.size(); i++)
     {
-	    models.at(i).computeModel( true, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest] );
+	    models.at(i).computeModel( true, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest], GetCalcTxTime (actualMode[dest]).GetSeconds () );
 	    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
     }
 
@@ -268,7 +268,7 @@ void PhyRxCallback (std::string path, Ptr<const Packet> packet)
 
 	      for(int i=0; i < models.size(); i++)
 	      {
-	                models.at(i).computeModel( false, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest] );
+	                models.at(i).computeModel( false, (actualMode[dest].GetPhyRate()/1e6), actualPower[dest], GetCalcTxTime (actualMode[dest]).GetSeconds ());
 	                NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: ACK rate " << (actualMode[dest].GetPhyRate()/1e6) << " Power " << actualPower[dest]);
 	      }
 
