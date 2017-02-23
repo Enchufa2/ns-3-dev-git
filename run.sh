@@ -5,7 +5,9 @@ REP=3
 
 job() {
   local OUT=$(NS_GLOBAL_VALUE="RngRun=$2" ./waf --run "power-adaptation-distance --manager=ns3::${1}WifiManager")
-  echo "$OUT $1"
+  while read -r LINE; do
+    echo "$LINE $1"
+  done <<< "$OUT"
 }
 export -f job
 
