@@ -109,6 +109,91 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("PowerAdaptationDistance");
 
+class EnergyModel
+{
+	public:
+		EnergyModel ( std::string device );
+		void computeModel( bool tx, int mcs, int txp  );
+		double getTotalEnergy();
+
+	private:
+		double m_intercept_tx;
+		double m_mcs_beta_tx;
+		double m_txp_beta;
+		double m_intercept_rx;
+		double m_mcs_beta_rx;
+
+		double m_total_energy;
+
+};
+
+EnergyModel::EnergyModel ( std::string device )
+{
+	if (device.compare("htc"))
+	{
+		m_intercept_tx = 0.354;
+		m_mcs_beta_tx = 0.0052;
+		m_txp_beta = 0.021;
+		m_intercept_rx = 0.013;
+		m_mcs_beta_rx = 0.00643;
+	}
+
+	else if (device.compare("linksys"))
+	{
+		m_intercept_tx = 0.54;
+		m_mcs_beta_tx = 0.0028;
+		m_txp_beta = 0.075;
+		m_intercept_rx = 0.14;
+		m_mcs_beta_rx = 0.0130;
+	}
+	else if (device.compare("rpi"))
+	{
+                m_intercept_tx = 0.478;
+		m_mcs_beta_tx = 0.0008;
+		m_txp_beta = 0.044;
+		m_intercept_rx = -0.0062;
+		m_mcs_beta_rx = 0.00146;
+	}
+	else if (device.compare("galaxy"))
+	{
+		m_intercept_tx = 0.572;
+	        m_mcs_beta_tx = 0.0017;
+	        m_txp_beta = 0.0105;
+	        m_intercept_rx = 0.0409;
+	        m_mcs_beta_rx = 0.00173;
+	}
+        else if (device.compare("soekris"))
+        {
+                m_intercept_tx = 0.17;
+                m_mcs_beta_tx = 0.017;
+                m_txp_beta = 0.0101;
+                m_intercept_rx = 0.010;
+                m_mcs_beta_rx = 0.0237;
+        }
+
+	m_total_energy = 0;
+}
+
+void EnergyModel::computeModel( bool tx, int mcs, int txp)
+{
+	// Transform dbm in mW
+	txp = pow(10, txp/10);
+
+	if (tx)
+	{
+		m_total_energy += m_intercept_tx + m_mcs_beta_tx*mcs + m_txp_beta*txp;
+	}
+	else
+	{
+		m_total_energy += m_intercept_rx + m_mcs_beta_rx*mcs;
+	}
+}
+
+double EnergyModel::getTotalEnergy()
+{
+	return m_total_energy;
+}
+
 // packet size generated at the AP
 static const uint32_t packetSize = 1420;
 NodeContainer wifiApNodes;
@@ -130,6 +215,9 @@ double totalTime = 0;
 uint32_t totalBytes = 0;
 double totalEnergy = 0;
 TxTime timeTable;
+std::vector<EnergyModel> models;
+
+bool is_ack = false;
 
 Time GetCalcTxTime (WifiMode mode)
 {
@@ -152,6 +240,13 @@ void PhyCallback (std::string path, Ptr<const Packet> packet)
 
   if (head.GetType() == WIFI_MAC_DATA) {
     totalEnergy += pow (10, actualPower[dest] / 10) * GetCalcTxTime (actualMode[dest]).GetSeconds ();
+
+    for(int i=0; i < models.size(); i++)
+    {
+	    models.at(i).computeModel( true, actualMode[dest].GetMcsValue(), actualPower[dest] );
+	    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: rate " << actualMode[dest].GetMcsValue() << " Power " << actualPower[dest]);
+    }
+
     totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
   }
 }
@@ -289,6 +384,14 @@ int main (int argc, char *argv[])
   cmd.AddValue ("speed", "Linear velocity for STA1", speed);
   cmd.AddValue ("enablePcap", "Enable pcap logging", enablePcap);
   cmd.Parse (argc, argv);
+
+  std::string devices[] = {"htc", "linksys","rpi", "galaxy", "soekris"};
+
+  for (int i=0; i < (sizeof(devices)/sizeof(devices[0])); i++)
+  {
+        EnergyModel model = EnergyModel(devices[i]);
+        models.push_back( model );
+  }
 
   // Define the APs
   wifiApNodes.Create (1);
