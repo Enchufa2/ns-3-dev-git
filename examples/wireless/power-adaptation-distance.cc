@@ -243,8 +243,8 @@ void PhyCallback (std::string path, Ptr<const Packet> packet)
 
     for(int i=0; i < models.size(); i++)
     {
-	    models.at(i).computeModel( true, actualMode[dest].GetMcsValue(), actualPower[dest] );
-	    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: rate " << actualMode[dest].GetMcsValue() << " Power " << actualPower[dest]);
+	    models.at(i).computeModel( true, actualMode[dest].GetPhyRate(), actualPower[dest] );
+	    NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " Energy: rate " << actualMode[dest].GetPhyRate() << " Power " << actualPower[dest]);
     }
 
     totalTime += GetCalcTxTime (actualMode[dest]).GetSeconds ();
