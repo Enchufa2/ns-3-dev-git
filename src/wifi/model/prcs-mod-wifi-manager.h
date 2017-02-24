@@ -23,7 +23,7 @@
 
 #include "ns3/nstime.h"
 #include "wifi-remote-station-manager.h"
-#include "rrpaa-wifi-manager.h"
+#include "rrpaa-mod-wifi-manager.h"
 
 namespace ns3 {
 
