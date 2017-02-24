@@ -485,7 +485,7 @@ int main (int argc, char *argv[])
                    MakeCallback (&PhyRxOkCallback));
 
   //Register power and rate changes to calculate the Average Transmit Power
-  if (manager.compare ("ns3::MinstrelBluesWifiManager") == 0) {
+  if (manager.find ("ns3::MinstrelBlues") == 0) {
     Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/PowerChange",
                        MakeCallback (&BluesPowerCallback));
     Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/RateChange",
@@ -497,7 +497,7 @@ int main (int argc, char *argv[])
                      MakeCallback (&RateCallback));
   }
 
-  if (manager.compare ("ns3::PrcsWifiManager") == 0) {
+  if (manager.find ("ns3::Prcs") == 0) {
   	Config::Connect ("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/RemoteStationManager/$" + manager + "/CstChange",
   			             MakeCallback (CstCallback));
   }

@@ -18,7 +18,7 @@
  * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 
-#include "minstrel-blues-wifi-manager.h"
+#include "minstrel-blues-mod-wifi-manager.h"
 #include "yans-wifi-phy.h"
 #include "wifi-phy.h"
 #include "ns3/simulator.h"
@@ -1367,9 +1367,3 @@ MinstrelBluesModWifiManager::PrintTable (MinstrelBluesWifiRemoteStation *station
 }
 
 } // namespace ns3
-
-
-
-
-
-

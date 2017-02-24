@@ -18,7 +18,7 @@
  * Author: Matias Richart <mrichart@fing.edu.uy>
  */
 
-#include "parf-wifi-manager.h"
+#include "parf-mod-wifi-manager.h"
 #include "wifi-phy.h"
 #include "ns3/assert.h"
 #include "ns3/log.h"

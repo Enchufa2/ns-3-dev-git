@@ -18,7 +18,7 @@
  * Author: Matías Richart <mrichart@fing.edu.uy>
  */
 
-#include "rrpaa-wifi-manager.h"
+#include "rrpaa-mod-wifi-manager.h"
 #include "yans-wifi-phy.h"
 #include "wifi-phy.h"
 #include "wifi-mac.h"

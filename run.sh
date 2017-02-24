@@ -14,6 +14,7 @@ export -f job
 for i in $MANAGERS; do
   for j in $(seq 1 $REP); do
     sem -j+0 job $i $j 2>/dev/null
+    sem -j+0 job ${i}Mod $j 2>/dev/null
   done
 done
 sem --wait 2>/dev/null

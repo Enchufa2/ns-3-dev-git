@@ -17,7 +17,7 @@
  *
  * Author: Matias Richart <mrichart@fing.edu.uy>
  */
-#include "aparf-wifi-manager.h"
+#include "aparf-mod-wifi-manager.h"
 #include "wifi-phy.h"
 #include "ns3/assert.h"
 #include "ns3/log.h"
