@@ -37,7 +37,7 @@ struct ParfWifiRemoteStation;
  * http://www.cs.odu.edu/~nadeem/classes/cs795-WNS-S13/papers/enter-006.pdf
  *
  */
-class ParfWifiManagerMod : public WifiRemoteStationManager
+class ParfModWifiManager : public WifiRemoteStationManager
 {
 public:
   /**
@@ -45,8 +45,8 @@ public:
    * \return The object TypeId.
    */
   static TypeId GetTypeId (void);
-  ParfWifiManagerMod ();
-  virtual ~ParfWifiManagerMod ();
+  ParfModWifiManager ();
+  virtual ~ParfModWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 

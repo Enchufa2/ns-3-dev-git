@@ -32,7 +32,7 @@
 #include "ns3/rng-seed-manager.h"
 #include <cmath>
 #define Min(a,b) ((a < b) ? a : b)
-NS_LOG_COMPONENT_DEFINE ("RrpaaWifiManagerMod");
+NS_LOG_COMPONENT_DEFINE ("RrpaaModWifiManager");
 
 namespace ns3 {
 
@@ -63,85 +63,85 @@ struct RrpaaWifiRemoteStation : public WifiRemoteStation
   double** m_pdTable;            //!< Probability table for power and rate changes.
 };
 
-NS_OBJECT_ENSURE_REGISTERED (RrpaaWifiManagerMod);
+NS_OBJECT_ENSURE_REGISTERED (RrpaaModWifiManager);
 
 TypeId
-RrpaaWifiManagerMod::GetTypeId (void)
+RrpaaModWifiManager::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::RrpaaWifiManagerMod")
+  static TypeId tid = TypeId ("ns3::RrpaaModWifiManager")
     .SetParent<WifiRemoteStationManager> ()
     .SetGroupName ("Wifi")
-    .AddConstructor<RrpaaWifiManagerMod> ()
+    .AddConstructor<RrpaaModWifiManager> ()
     .AddAttribute ("Basic",
                    "If true the RRAA-BASIC algorithm will be used, otherwise the RRAA will be used.",
                    BooleanValue (true),
-                   MakeBooleanAccessor (&RrpaaWifiManagerMod::m_basic),
+                   MakeBooleanAccessor (&RrpaaModWifiManager::m_basic),
                    MakeBooleanChecker ())
     .AddAttribute ("Timeout",
                    "Timeout for the RRAA-BASIC loss estimation block (s).",
                    TimeValue (Seconds (0.5)),
-                   MakeTimeAccessor (&RrpaaWifiManagerMod::m_timeout),
+                   MakeTimeAccessor (&RrpaaModWifiManager::m_timeout),
                    MakeTimeChecker ())
     .AddAttribute ("FrameLength",
                    "The data frame length used for calculating mode TxTime.",
                    UintegerValue (1420),
-                   MakeUintegerAccessor (&RrpaaWifiManagerMod::m_frameLength),
+                   MakeUintegerAccessor (&RrpaaModWifiManager::m_frameLength),
                    MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("AckFrameLength",
                    "The ACK frame length used for calculating mode TxTime.",
                    DoubleValue (14),
-                   MakeDoubleAccessor (&RrpaaWifiManagerMod::m_ackLength),
+                   MakeDoubleAccessor (&RrpaaModWifiManager::m_ackLength),
                    MakeDoubleChecker <uint32_t> ())
     .AddAttribute ("Alpha",
                    "Constant for calculating the MTL threshold.",
                    DoubleValue (1.25),
-                   MakeDoubleAccessor (&RrpaaWifiManagerMod::m_alpha),
+                   MakeDoubleAccessor (&RrpaaModWifiManager::m_alpha),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("Beta",
                    "Constant for calculating the ORI threshold.",
                    DoubleValue (2),
-                   MakeDoubleAccessor (&RrpaaWifiManagerMod::m_beta),
+                   MakeDoubleAccessor (&RrpaaModWifiManager::m_beta),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("Tau",
                    "Constant for calculating the EWND size.",
                    DoubleValue (0.015),
-                   MakeDoubleAccessor (&RrpaaWifiManagerMod::m_tau),
+                   MakeDoubleAccessor (&RrpaaModWifiManager::m_tau),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("Gamma",
                    "Constant for Probabilistic Decision Table decrements.",
                    DoubleValue (2),
-                   MakeDoubleAccessor (&RrpaaWifiManagerMod::m_gamma),
+                   MakeDoubleAccessor (&RrpaaModWifiManager::m_gamma),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("Delta",
                    "Constant for Probabilistic Decision Table increments.",
                    DoubleValue (1.0905),
-                   MakeDoubleAccessor (&RrpaaWifiManagerMod::m_delta),
+                   MakeDoubleAccessor (&RrpaaModWifiManager::m_delta),
                    MakeDoubleChecker<double> ())
     .AddTraceSource ("RateChange",
                      "The transmission rate has change.",
-                     MakeTraceSourceAccessor (&RrpaaWifiManagerMod::m_rateChange),
-                     "ns3::RrpaaWifiManagerMod::RateChangeTracedCallback")
+                     MakeTraceSourceAccessor (&RrpaaModWifiManager::m_rateChange),
+                     "ns3::RrpaaModWifiManager::RateChangeTracedCallback")
     .AddTraceSource ("PowerChange",
                      "The transmission power has change.",
-                     MakeTraceSourceAccessor (&RrpaaWifiManagerMod::m_powerChange),
-                     "ns3::RrpaaWifiManagerMod::PowerChangeTracedCallback")
+                     MakeTraceSourceAccessor (&RrpaaModWifiManager::m_powerChange),
+                     "ns3::RrpaaModWifiManager::PowerChangeTracedCallback")
   ;
   return tid;
 }
 
 
-RrpaaWifiManagerMod::RrpaaWifiManagerMod ()
+RrpaaModWifiManager::RrpaaModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
 
-RrpaaWifiManagerMod::~RrpaaWifiManagerMod ()
+RrpaaModWifiManager::~RrpaaModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-RrpaaWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
+RrpaaModWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
   NS_LOG_FUNCTION (this);
   m_minPower = phy->GetTxPowerStart ();
@@ -161,7 +161,7 @@ RrpaaWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
 }
 
 void
-RrpaaWifiManagerMod::SetupMac (Ptr<WifiMac> mac)
+RrpaaModWifiManager::SetupMac (Ptr<WifiMac> mac)
 {
   NS_LOG_FUNCTION (this);
   m_sifs = mac->GetSifs ();
@@ -170,7 +170,7 @@ RrpaaWifiManagerMod::SetupMac (Ptr<WifiMac> mac)
 }
 
 Time
-RrpaaWifiManagerMod::GetCalcTxTime (WifiMode mode) const
+RrpaaModWifiManager::GetCalcTxTime (WifiMode mode) const
 {
   NS_LOG_FUNCTION (this << mode);
   for (TxTime::const_iterator i = m_calcTxTime.begin (); i != m_calcTxTime.end (); i++)
@@ -185,14 +185,14 @@ RrpaaWifiManagerMod::GetCalcTxTime (WifiMode mode) const
 }
 
 void
-RrpaaWifiManagerMod::AddCalcTxTime (WifiMode mode, Time t)
+RrpaaModWifiManager::AddCalcTxTime (WifiMode mode, Time t)
 {
   NS_LOG_FUNCTION (this << mode << t);
   m_calcTxTime.push_back (std::make_pair (t, mode));
 }
 
 Thresholds
-RrpaaWifiManagerMod::GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const
+RrpaaModWifiManager::GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mode) const
 {
   NS_LOG_FUNCTION (this << station << mode);
   for (RrpaaThresholds::const_iterator i = station->m_thresholds.begin (); i != station->m_thresholds.end (); i++)
@@ -206,7 +206,7 @@ RrpaaWifiManagerMod::GetThresholds (RrpaaWifiRemoteStation *station, WifiMode mo
 }
 
 WifiRemoteStation *
-RrpaaWifiManagerMod::DoCreateStation (void) const
+RrpaaModWifiManager::DoCreateStation (void) const
 {
   NS_LOG_FUNCTION (this);
   RrpaaWifiRemoteStation *station = new RrpaaWifiRemoteStation ();
@@ -219,7 +219,7 @@ RrpaaWifiManagerMod::DoCreateStation (void) const
 }
 
 void
-RrpaaWifiManagerMod::CheckInit (RrpaaWifiRemoteStation *station)
+RrpaaModWifiManager::CheckInit (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
   if (!station->m_initialized)
@@ -253,7 +253,7 @@ RrpaaWifiManagerMod::CheckInit (RrpaaWifiRemoteStation *station)
 }
 
 void
-RrpaaWifiManagerMod::InitThresholds (RrpaaWifiRemoteStation *station)
+RrpaaModWifiManager::InitThresholds (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
   NS_LOG_DEBUG ("InitThresholds = " << station);
@@ -293,7 +293,7 @@ RrpaaWifiManagerMod::InitThresholds (RrpaaWifiRemoteStation *station)
 }
 
 void
-RrpaaWifiManagerMod::ResetCountersBasic (RrpaaWifiRemoteStation *station)
+RrpaaModWifiManager::ResetCountersBasic (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
   station->m_nFailed = 0;
@@ -302,13 +302,13 @@ RrpaaWifiManagerMod::ResetCountersBasic (RrpaaWifiRemoteStation *station)
 }
 
 void
-RrpaaWifiManagerMod::DoReportRtsFailed (WifiRemoteStation *st)
+RrpaaModWifiManager::DoReportRtsFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
 }
 
 void
-RrpaaWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
+RrpaaModWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   RrpaaWifiRemoteStation *station = (RrpaaWifiRemoteStation *) st;
@@ -321,14 +321,14 @@ RrpaaWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
 }
 
 void
-RrpaaWifiManagerMod::DoReportRxOk (WifiRemoteStation *st,
+RrpaaModWifiManager::DoReportRxOk (WifiRemoteStation *st,
                                 double rxSnr, WifiMode txMode)
 {
   NS_LOG_FUNCTION (this << st << rxSnr << txMode);
 }
 
 void
-RrpaaWifiManagerMod::DoReportRtsOk (WifiRemoteStation *st,
+RrpaaModWifiManager::DoReportRtsOk (WifiRemoteStation *st,
                                  double ctsSnr, WifiMode ctsMode, double rtsSnr)
 {
   NS_LOG_FUNCTION (this << st << ctsSnr << ctsMode << rtsSnr);
@@ -336,7 +336,7 @@ RrpaaWifiManagerMod::DoReportRtsOk (WifiRemoteStation *st,
 }
 
 void
-RrpaaWifiManagerMod::DoReportDataOk (WifiRemoteStation *st,
+RrpaaModWifiManager::DoReportDataOk (WifiRemoteStation *st,
                                   double ackSnr, WifiMode ackMode, double dataSnr)
 {
   NS_LOG_FUNCTION (this << st << ackSnr << ackMode << dataSnr);
@@ -348,18 +348,18 @@ RrpaaWifiManagerMod::DoReportDataOk (WifiRemoteStation *st,
   RunBasicAlgorithm (station);
 }
 void
-RrpaaWifiManagerMod::DoReportFinalRtsFailed (WifiRemoteStation *st)
+RrpaaModWifiManager::DoReportFinalRtsFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
 }
 void
-RrpaaWifiManagerMod::DoReportFinalDataFailed (WifiRemoteStation *st)
+RrpaaModWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
 }
 
 WifiTxVector
-RrpaaWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st,
+RrpaaModWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
                                      uint32_t size)
 {
   NS_LOG_FUNCTION (this << st << size);
@@ -368,7 +368,7 @@ RrpaaWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st,
   return WifiTxVector (GetSupported (station, station->m_rate), station->m_power, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetStbc (station));
 }
 WifiTxVector
-RrpaaWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
+RrpaaModWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   RrpaaWifiRemoteStation *station = (RrpaaWifiRemoteStation *) st;
@@ -377,7 +377,7 @@ RrpaaWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
 }
 
 bool
-RrpaaWifiManagerMod::DoNeedRts (WifiRemoteStation *st,
+RrpaaModWifiManager::DoNeedRts (WifiRemoteStation *st,
                              Ptr<const Packet> packet, bool normally)
 {
   NS_LOG_FUNCTION (this << st << packet << normally);
@@ -392,7 +392,7 @@ RrpaaWifiManagerMod::DoNeedRts (WifiRemoteStation *st,
 }
 
 void
-RrpaaWifiManagerMod::CheckTimeout (RrpaaWifiRemoteStation *station)
+RrpaaModWifiManager::CheckTimeout (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
   Time d = Simulator::Now () - station->m_lastReset;
@@ -403,7 +403,7 @@ RrpaaWifiManagerMod::CheckTimeout (RrpaaWifiRemoteStation *station)
 }
 
 void
-RrpaaWifiManagerMod::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
+RrpaaModWifiManager::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
   RngSeedManager::SetSeed (static_cast<uint32_t> (time (0)));
@@ -494,7 +494,7 @@ RrpaaWifiManagerMod::RunBasicAlgorithm (RrpaaWifiRemoteStation *station)
 }
 
 void
-RrpaaWifiManagerMod::ARts (RrpaaWifiRemoteStation *station)
+RrpaaModWifiManager::ARts (RrpaaWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
   if (!station->m_rtsOn
@@ -521,7 +521,7 @@ RrpaaWifiManagerMod::ARts (RrpaaWifiRemoteStation *station)
 }
 
 Thresholds
-RrpaaWifiManagerMod::GetThresholds (RrpaaWifiRemoteStation *station,
+RrpaaModWifiManager::GetThresholds (RrpaaWifiRemoteStation *station,
                                  uint32_t rate) const
 {
   NS_LOG_FUNCTION (this << station << rate);
@@ -530,7 +530,7 @@ RrpaaWifiManagerMod::GetThresholds (RrpaaWifiRemoteStation *station,
 }
 
 bool
-RrpaaWifiManagerMod::IsLowLatency (void) const
+RrpaaModWifiManager::IsLowLatency (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;

@@ -143,13 +143,13 @@ typedef std::vector<std::vector<uint32_t> > SampleRate;
  * Minstrel-Blues is described in the Phd. Thesis <i>A Measurement-Based Joint
  * Power and Rate Controller for IEEE 802.11 Networks</i> by Thomas Huehn, 2013.
  */
-class MinstrelBluesWifiManagerMod : public WifiRemoteStationManager
+class MinstrelBluesModWifiManager : public WifiRemoteStationManager
 {
 
 public:
   static TypeId GetTypeId (void);
-  MinstrelBluesWifiManagerMod ();
-  virtual ~MinstrelBluesWifiManagerMod ();
+  MinstrelBluesModWifiManager ();
+  virtual ~MinstrelBluesModWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 

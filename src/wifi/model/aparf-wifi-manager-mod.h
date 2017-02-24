@@ -38,7 +38,7 @@ struct AparfWifiRemoteStation;
  * http://www.cs.mun.ca/~yzchen/papers/papers/rate_adaptation/80211_dynamic_rate_power_adjustment_chevillat_j2005.pdf
  *
  */
-class AparfWifiManagerMod : public WifiRemoteStationManager
+class AparfModWifiManager : public WifiRemoteStationManager
 {
 public:
   /**
@@ -46,8 +46,8 @@ public:
    * \return The object TypeId.
    */
   static TypeId GetTypeId (void);
-  AparfWifiManagerMod ();
-  virtual ~AparfWifiManagerMod ();
+  AparfModWifiManager ();
+  virtual ~AparfModWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
 

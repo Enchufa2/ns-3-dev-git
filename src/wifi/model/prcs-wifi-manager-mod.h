@@ -40,7 +40,7 @@ struct PrcsWifiRemoteStation;
  * http://www.cnsm-conf.org/2014/proceedings/pdf/36.pdf
  */
 
-class PrcsWifiManagerMod : public WifiRemoteStationManager
+class PrcsModWifiManager : public WifiRemoteStationManager
 {
 public:
   /**
@@ -48,8 +48,8 @@ public:
    * \return The object TypeId.
    */
   static TypeId GetTypeId (void);
-  PrcsWifiManagerMod ();
-  virtual ~PrcsWifiManagerMod ();
+  PrcsModWifiManager ();
+  virtual ~PrcsModWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
   virtual void SetupMac (Ptr<WifiMac> mac);

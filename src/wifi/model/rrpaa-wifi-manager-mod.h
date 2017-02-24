@@ -62,7 +62,7 @@ struct Thresholds
  */
 typedef std::vector<std::pair<Thresholds,WifiMode> > RrpaaThresholds;
 
-class RrpaaWifiManagerMod : public WifiRemoteStationManager
+class RrpaaModWifiManager : public WifiRemoteStationManager
 {
 public:
   /**
@@ -70,8 +70,8 @@ public:
    * \return The object TypeId.
    */
   static TypeId GetTypeId (void);
-  RrpaaWifiManagerMod ();
-  virtual ~RrpaaWifiManagerMod ();
+  RrpaaModWifiManager ();
+  virtual ~RrpaaModWifiManager ();
 
   virtual void SetupPhy (Ptr<WifiPhy> phy);
   virtual void SetupMac (Ptr<WifiMac> mac);

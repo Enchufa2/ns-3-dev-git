@@ -35,7 +35,7 @@
 #define Min(a,b) ((a < b) ? a : b)
 #define Max(a,b) ((a > b) ? a : b)
 
-NS_LOG_COMPONENT_DEFINE ("MinstrelBluesWifiManagerMod");
+NS_LOG_COMPONENT_DEFINE ("MinstrelBluesModWifiManager");
 
 
 namespace ns3 {
@@ -90,114 +90,114 @@ struct MinstrelBluesWifiRemoteStation : public WifiRemoteStation
   double m_maxURate2;
 };
 
-NS_OBJECT_ENSURE_REGISTERED (MinstrelBluesWifiManagerMod);
+NS_OBJECT_ENSURE_REGISTERED (MinstrelBluesModWifiManager);
 
 TypeId
-MinstrelBluesWifiManagerMod::GetTypeId (void)
+MinstrelBluesModWifiManager::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::MinstrelBluesWifiManagerMod")
+  static TypeId tid = TypeId ("ns3::MinstrelBluesModWifiManager")
     .SetParent<WifiRemoteStationManager> ()
-    .AddConstructor<MinstrelBluesWifiManagerMod> ()
+    .AddConstructor<MinstrelBluesModWifiManager> ()
     .AddAttribute ("UpdateStatistics",
                    "The interval between updating statistics table.",
                    TimeValue (Seconds (0.1)),
-                   MakeTimeAccessor (&MinstrelBluesWifiManagerMod::m_updateStats),
+                   MakeTimeAccessor (&MinstrelBluesModWifiManager::m_updateStats),
                    MakeTimeChecker ())
     .AddAttribute ("LookAroundRate",
                    "The percentage to try other rates than our current rate.",
                    DoubleValue (10),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_minstrelSamplingRatio),
+                   MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_minstrelSamplingRatio),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("EWMA",
                    "The EWMA coefficient",
                    DoubleValue (75),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_ewmaCoefficient),
+                   MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_ewmaCoefficient),
                    MakeDoubleChecker<double> ())
     .AddAttribute ("SampleColumn",
                    "The number of columns used for sampling",
                    DoubleValue (10),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_nSampleColumns),
+                   MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_nSampleColumns),
                    MakeDoubleChecker <uint32_t> ())
     .AddAttribute ("FrameLength",
                    "The frame length used for calculating mode TxTime",
                    DoubleValue (1420),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_frameLength),
+                   MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_frameLength),
                    MakeDoubleChecker <uint32_t> ())
     .AddAttribute ("LookAroundSamplePower",
                    "The percentage to try other sample powers than our current sample power.",
                    DoubleValue (10),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_bluesSamplingRatio),
+                   MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_bluesSamplingRatio),
                    MakeDoubleChecker <double> ())
     .AddAttribute ("BluesUpdateStats",
                    "How many reference and sample frames are needed for updating statistics.",
                    UintegerValue (35),
-                   MakeUintegerAccessor (&MinstrelBluesWifiManagerMod::m_bluesUpdateStatsThreshold),
+                   MakeUintegerAccessor (&MinstrelBluesModWifiManager::m_bluesUpdateStatsThreshold),
                    MakeUintegerChecker <uint32_t> ())
     .AddAttribute ("IncrementLevel",
                    "How many levels to increase power each time.",
                    UintegerValue (2),
-                   MakeUintegerAccessor (&MinstrelBluesWifiManagerMod::m_deltaIncPower),
+                   MakeUintegerAccessor (&MinstrelBluesModWifiManager::m_deltaIncPower),
                    MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("DecrementLevel",
                    "How many levels to decrease power each time.",
                    UintegerValue (1),
-                   MakeUintegerAccessor (&MinstrelBluesWifiManagerMod::m_deltaDecPower),
+                   MakeUintegerAccessor (&MinstrelBluesModWifiManager::m_deltaDecPower),
                    MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("Delta",
                    "Power levels of separation between data and sample power.",
                    UintegerValue (2),
-                   MakeUintegerAccessor (&MinstrelBluesWifiManagerMod::m_deltaDataSamplePower),
+                   MakeUintegerAccessor (&MinstrelBluesModWifiManager::m_deltaDataSamplePower),
                    MakeUintegerChecker <uint8_t> ())
    .AddAttribute ("BluesPowerStep",
                   "Minimum separation between sample and reference power.",
                   UintegerValue (2),
-                  MakeUintegerAccessor (&MinstrelBluesWifiManagerMod::m_bluesPowerStep),
+                  MakeUintegerAccessor (&MinstrelBluesModWifiManager::m_bluesPowerStep),
                   MakeUintegerChecker <uint8_t> ())
     .AddAttribute ("IncrementThreshold",
                    "The difference between probabilities needed to increase power.",
                    DoubleValue (0.1),
-                   MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_thIncPower),
+                   MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_thIncPower),
                    MakeDoubleChecker <double> ())
     .AddAttribute ("DecrementThreshold",
                    "The difference between probabilities needed to decrease power.",
                     DoubleValue (0.2),
-                    MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_thDecPower),
+                    MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_thDecPower),
                     MakeDoubleChecker <double> ())
     .AddAttribute ("EmergencyThreshold",
 		   "The probability of data power needed for determining a throughput collapse.",
 		    DoubleValue (0.1),
-		    MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_thEmergency),
+		    MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_thEmergency),
 		    MakeDoubleChecker <double> ())
     .AddAttribute ("BluesUtilityWeight",
 		   "The weight to use in the utility function.",
 		    DoubleValue (10),
-		    MakeDoubleAccessor (&MinstrelBluesWifiManagerMod::m_bluesUilityWeight),
+		    MakeDoubleAccessor (&MinstrelBluesModWifiManager::m_bluesUilityWeight),
 		    MakeDoubleChecker <double> ())
     .AddTraceSource ("PowerChange",
                     "The transmission power has change",
-                    MakeTraceSourceAccessor (&MinstrelBluesWifiManagerMod::m_powerChange),
-                    "ns3::MinstrelBluesWifiManagerMod::PowerChangeTracedCallback")
+                    MakeTraceSourceAccessor (&MinstrelBluesModWifiManager::m_powerChange),
+                    "ns3::MinstrelBluesModWifiManager::PowerChangeTracedCallback")
     .AddTraceSource ("RateChange",
 		     "The transmission rate has change",
-		     MakeTraceSourceAccessor (&MinstrelBluesWifiManagerMod::m_rateChange),
-		     "ns3::MinstrelBluesWifiManagerMod::RateChangeTracedCallback")
+		     MakeTraceSourceAccessor (&MinstrelBluesModWifiManager::m_rateChange),
+		     "ns3::MinstrelBluesModWifiManager::RateChangeTracedCallback")
   ;
   return tid;
 }
 
-MinstrelBluesWifiManagerMod::MinstrelBluesWifiManagerMod ()
+MinstrelBluesModWifiManager::MinstrelBluesModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
   m_uniformRandomVariable = CreateObject<UniformRandomVariable> ();
 }
 
-MinstrelBluesWifiManagerMod::~MinstrelBluesWifiManagerMod ()
+MinstrelBluesModWifiManager::~MinstrelBluesModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-MinstrelBluesWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
+MinstrelBluesModWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
   NS_LOG_FUNCTION (this);
   m_minPower = phy->GetTxPowerStart();
@@ -214,7 +214,7 @@ MinstrelBluesWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
 }
 
 int64_t
-MinstrelBluesWifiManagerMod::AssignStreams (int64_t stream)
+MinstrelBluesModWifiManager::AssignStreams (int64_t stream)
 {
   NS_LOG_FUNCTION (this << stream);
   m_uniformRandomVariable->SetStream (stream);
@@ -222,7 +222,7 @@ MinstrelBluesWifiManagerMod::AssignStreams (int64_t stream)
 }
 
 Time
-MinstrelBluesWifiManagerMod::GetCalcTxTime (WifiMode mode) const
+MinstrelBluesModWifiManager::GetCalcTxTime (WifiMode mode) const
 {
   NS_LOG_FUNCTION (this);
   for (TxTime::const_iterator i = m_calcTxTime.begin (); i != m_calcTxTime.end (); i++)
@@ -237,14 +237,14 @@ MinstrelBluesWifiManagerMod::GetCalcTxTime (WifiMode mode) const
 }
 
 void
-MinstrelBluesWifiManagerMod::AddCalcTxTime (WifiMode mode, Time t)
+MinstrelBluesModWifiManager::AddCalcTxTime (WifiMode mode, Time t)
 {
   NS_LOG_FUNCTION (this);
   m_calcTxTime.push_back (std::make_pair (t, mode));
 }
 
 WifiRemoteStation *
-MinstrelBluesWifiManagerMod::DoCreateStation (void) const
+MinstrelBluesModWifiManager::DoCreateStation (void) const
 {
   NS_LOG_FUNCTION (this);
   MinstrelBluesWifiRemoteStation *station = new MinstrelBluesWifiRemoteStation ();
@@ -274,7 +274,7 @@ MinstrelBluesWifiManagerMod::DoCreateStation (void) const
 }
 
 void
-MinstrelBluesWifiManagerMod::CheckInit (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::CheckInit (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   if (!station->m_initialized)
@@ -297,13 +297,13 @@ MinstrelBluesWifiManagerMod::CheckInit (MinstrelBluesWifiRemoteStation *station)
 }
 
 void
-MinstrelBluesWifiManagerMod::DoReportRxOk (WifiRemoteStation *st, double rxSnr, WifiMode txMode)
+MinstrelBluesModWifiManager::DoReportRxOk (WifiRemoteStation *st, double rxSnr, WifiMode txMode)
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-MinstrelBluesWifiManagerMod::DoReportRtsFailed (WifiRemoteStation *st)
+MinstrelBluesModWifiManager::DoReportRtsFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this);
   MinstrelBluesWifiRemoteStation *station = (MinstrelBluesWifiRemoteStation *)st;
@@ -313,7 +313,7 @@ MinstrelBluesWifiManagerMod::DoReportRtsFailed (WifiRemoteStation *st)
 }
 
 void
-MinstrelBluesWifiManagerMod::DoReportRtsOk (WifiRemoteStation *st, double ctsSnr,
+MinstrelBluesModWifiManager::DoReportRtsOk (WifiRemoteStation *st, double ctsSnr,
                                          WifiMode ctsMode, double rtsSnr)
 {
   NS_LOG_FUNCTION (this);
@@ -321,7 +321,7 @@ MinstrelBluesWifiManagerMod::DoReportRtsOk (WifiRemoteStation *st, double ctsSnr
 }
 
 void
-MinstrelBluesWifiManagerMod::DoReportFinalRtsFailed (WifiRemoteStation *st)
+MinstrelBluesModWifiManager::DoReportFinalRtsFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this);
   MinstrelBluesWifiRemoteStation *station = (MinstrelBluesWifiRemoteStation *)st;
@@ -330,7 +330,7 @@ MinstrelBluesWifiManagerMod::DoReportFinalRtsFailed (WifiRemoteStation *st)
 }
 
 void
-MinstrelBluesWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
+MinstrelBluesModWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this);
   MinstrelBluesWifiRemoteStation *station = (MinstrelBluesWifiRemoteStation *)st;
@@ -391,7 +391,7 @@ MinstrelBluesWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
  * Before calling this function, DoReportDataFailed was called.
  */
 void
-MinstrelBluesWifiManagerMod::DoReportFinalDataFailed (WifiRemoteStation *st)
+MinstrelBluesModWifiManager::DoReportFinalDataFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this);
   MinstrelBluesWifiRemoteStation *station = (MinstrelBluesWifiRemoteStation *) st;
@@ -423,7 +423,7 @@ MinstrelBluesWifiManagerMod::DoReportFinalDataFailed (WifiRemoteStation *st)
 }
 
 void
-MinstrelBluesWifiManagerMod::DoReportDataOk (WifiRemoteStation *st,
+MinstrelBluesModWifiManager::DoReportDataOk (WifiRemoteStation *st,
                                      double ackSnr, WifiMode ackMode, double dataSnr)
 {
   NS_LOG_FUNCTION (this);
@@ -496,7 +496,7 @@ MinstrelBluesWifiManagerMod::DoReportDataOk (WifiRemoteStation *st,
 }
 
 void
-MinstrelBluesWifiManagerMod::UpdateRetry (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::UpdateRetry (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   for (uint32_t i = 0; i < station->m_nSupported; i++)
@@ -508,7 +508,7 @@ MinstrelBluesWifiManagerMod::UpdateRetry (MinstrelBluesWifiRemoteStation *statio
 }
 
 WifiTxVector
-MinstrelBluesWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st,
+MinstrelBluesModWifiManager::DoGetDataTxVector (WifiRemoteStation *st,
                                     uint32_t size)
 {
   NS_LOG_FUNCTION (this);
@@ -529,7 +529,7 @@ MinstrelBluesWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st,
 }
 
 WifiTxVector
-MinstrelBluesWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
+MinstrelBluesModWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this);
   MinstrelBluesWifiRemoteStation *station = (MinstrelBluesWifiRemoteStation *) st;
@@ -545,7 +545,7 @@ MinstrelBluesWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
 }
 
 bool
-MinstrelBluesWifiManagerMod::DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally)
+MinstrelBluesModWifiManager::DoNeedDataRetransmission (WifiRemoteStation *st, Ptr<const Packet> packet, bool normally)
 {
   NS_LOG_FUNCTION (this);
   MinstrelBluesWifiRemoteStation *station = (MinstrelBluesWifiRemoteStation *)st;
@@ -573,14 +573,14 @@ MinstrelBluesWifiManagerMod::DoNeedDataRetransmission (WifiRemoteStation *st, Pt
 }
 
 bool
-MinstrelBluesWifiManagerMod::IsLowLatency (void) const
+MinstrelBluesModWifiManager::IsLowLatency (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;
 }
 
 uint32_t
-MinstrelBluesWifiManagerMod::GetNextSample (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::GetNextSample (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   uint32_t bitrate;
@@ -601,7 +601,7 @@ MinstrelBluesWifiManagerMod::GetNextSample (MinstrelBluesWifiRemoteStation *stat
 }
 
 void
-MinstrelBluesWifiManagerMod::SetRatePower (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::SetRatePower (MinstrelBluesWifiRemoteStation *station)
 {
   /**
    *
@@ -803,7 +803,7 @@ MinstrelBluesWifiManagerMod::SetRatePower (MinstrelBluesWifiRemoteStation *stati
 }
 
 double
-MinstrelBluesWifiManagerMod::BluesUtility (MinstrelBluesWifiRemoteStation *station, uint32_t rate)
+MinstrelBluesModWifiManager::BluesUtility (MinstrelBluesWifiRemoteStation *station, uint32_t rate)
 {
   NS_LOG_FUNCTION (this);
   uint32_t th = station->m_minstrelBluesTable[rate].throughput;
@@ -823,7 +823,7 @@ MinstrelBluesWifiManagerMod::BluesUtility (MinstrelBluesWifiRemoteStation *stati
 }
 
 void
-MinstrelBluesWifiManagerMod::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
 
@@ -988,7 +988,7 @@ MinstrelBluesWifiManagerMod::MinstrelUpdateStats (MinstrelBluesWifiRemoteStation
 }
 
 void
-MinstrelBluesWifiManagerMod::MinstrelSortBestThRates (MinstrelBluesWifiRemoteStation *station, uint32_t i)
+MinstrelBluesModWifiManager::MinstrelSortBestThRates (MinstrelBluesWifiRemoteStation *station, uint32_t i)
 {
   NS_LOG_FUNCTION (this);
 
@@ -1005,7 +1005,7 @@ MinstrelBluesWifiManagerMod::MinstrelSortBestThRates (MinstrelBluesWifiRemoteSta
 }
 
 void
-MinstrelBluesWifiManagerMod::BluesUpdateStats (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::BluesUpdateStats (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   if (!station->m_initialized)
@@ -1160,7 +1160,7 @@ MinstrelBluesWifiManagerMod::BluesUpdateStats (MinstrelBluesWifiRemoteStation *s
 }
 
 void
-MinstrelBluesWifiManagerMod::RateInit (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::RateInit (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("RateInit=" << station);
@@ -1215,7 +1215,7 @@ MinstrelBluesWifiManagerMod::RateInit (MinstrelBluesWifiRemoteStation *station)
 }
 
 void
-MinstrelBluesWifiManagerMod::Reset (MinstrelBluesWifiRemoteStation *station, uint32_t rate)
+MinstrelBluesModWifiManager::Reset (MinstrelBluesWifiRemoteStation *station, uint32_t rate)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("Reset=" << station);
@@ -1261,7 +1261,7 @@ MinstrelBluesWifiManagerMod::Reset (MinstrelBluesWifiRemoteStation *station, uin
 }
 
 Time
-MinstrelBluesWifiManagerMod::CalculateTimeUnicastPacket (Time dataTransmissionTime, uint32_t shortRetries, uint32_t longRetries)
+MinstrelBluesModWifiManager::CalculateTimeUnicastPacket (Time dataTransmissionTime, uint32_t shortRetries, uint32_t longRetries)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_FUNCTION (this << dataTransmissionTime << shortRetries << longRetries);
@@ -1288,7 +1288,7 @@ MinstrelBluesWifiManagerMod::CalculateTimeUnicastPacket (Time dataTransmissionTi
 }
 
 void
-MinstrelBluesWifiManagerMod::InitSampleTable (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::InitSampleTable (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("InitSampleTable=" << this);
@@ -1323,7 +1323,7 @@ MinstrelBluesWifiManagerMod::InitSampleTable (MinstrelBluesWifiRemoteStation *st
 }
 
 void
-MinstrelBluesWifiManagerMod::PrintSampleTable (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::PrintSampleTable (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("PrintSampleTable=" << station);
@@ -1340,7 +1340,7 @@ MinstrelBluesWifiManagerMod::PrintSampleTable (MinstrelBluesWifiRemoteStation *s
 }
 
 void
-MinstrelBluesWifiManagerMod::PrintTable (MinstrelBluesWifiRemoteStation *station)
+MinstrelBluesModWifiManager::PrintTable (MinstrelBluesWifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_DEBUG ("PrintTable=" << station);

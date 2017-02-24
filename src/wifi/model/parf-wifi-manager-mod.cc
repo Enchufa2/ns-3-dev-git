@@ -27,7 +27,7 @@
 
 #define Min(a,b) ((a < b) ? a : b)
 
-NS_LOG_COMPONENT_DEFINE ("ns3::ParfWifiManagerMod");
+NS_LOG_COMPONENT_DEFINE ("ns3::ParfModWifiManager");
 
 
 namespace ns3 {
@@ -55,48 +55,48 @@ struct ParfWifiRemoteStation : public WifiRemoteStation
   bool m_initialized; //!< For initializing variables.
 };
 
-NS_OBJECT_ENSURE_REGISTERED (ParfWifiManagerMod);
+NS_OBJECT_ENSURE_REGISTERED (ParfModWifiManager);
 
 TypeId
-ParfWifiManagerMod::GetTypeId (void)
+ParfModWifiManager::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::ParfWifiManagerMod")
+  static TypeId tid = TypeId ("ns3::ParfModWifiManager")
     .SetParent<WifiRemoteStationManager> ()
     .SetGroupName ("Wifi")
-    .AddConstructor<ParfWifiManagerMod> ()
+    .AddConstructor<ParfModWifiManager> ()
     .AddAttribute ("AttemptThreshold",
                    "The minimum number of transmission attempts to try a new power or rate.",
                    UintegerValue (15),
-                   MakeUintegerAccessor (&ParfWifiManagerMod::m_attemptThreshold),
+                   MakeUintegerAccessor (&ParfModWifiManager::m_attemptThreshold),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("SuccessThreshold",
                    "The minimum number of successful transmissions to try a new power or rate.",
                    UintegerValue (10),
-                   MakeUintegerAccessor (&ParfWifiManagerMod::m_successThreshold),
+                   MakeUintegerAccessor (&ParfModWifiManager::m_successThreshold),
                    MakeUintegerChecker<uint32_t> ())
     .AddTraceSource ("PowerChange",
                      "The transmission power has change",
-                     MakeTraceSourceAccessor (&ParfWifiManagerMod::m_powerChange),
-                     "ns3::ParfWifiManagerMod::PowerChangeTracedCallback")
+                     MakeTraceSourceAccessor (&ParfModWifiManager::m_powerChange),
+                     "ns3::ParfModWifiManager::PowerChangeTracedCallback")
     .AddTraceSource ("RateChange",
                      "The transmission rate has change",
-                     MakeTraceSourceAccessor (&ParfWifiManagerMod::m_rateChange),
-                     "ns3::ParfWifiManagerMod::RateChangeTracedCallback")
+                     MakeTraceSourceAccessor (&ParfModWifiManager::m_rateChange),
+                     "ns3::ParfModWifiManager::RateChangeTracedCallback")
   ;
   return tid;
 }
 
-ParfWifiManagerMod::ParfWifiManagerMod ()
+ParfModWifiManager::ParfModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
-ParfWifiManagerMod::~ParfWifiManagerMod ()
+ParfModWifiManager::~ParfModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-ParfWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
+ParfModWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
   m_minPower = phy->GetTxPowerStart ();
   m_maxPower = phy->GetTxPowerEnd ();
@@ -104,7 +104,7 @@ ParfWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
 }
 
 WifiRemoteStation *
-ParfWifiManagerMod::DoCreateStation (void) const
+ParfModWifiManager::DoCreateStation (void) const
 {
   NS_LOG_FUNCTION (this);
   ParfWifiRemoteStation *station = new ParfWifiRemoteStation ();
@@ -124,7 +124,7 @@ ParfWifiManagerMod::DoCreateStation (void) const
 }
 
 void
-ParfWifiManagerMod::CheckInit (ParfWifiRemoteStation *station)
+ParfModWifiManager::CheckInit (ParfWifiRemoteStation *station)
 {
   if (!station->m_initialized)
     {
@@ -138,7 +138,7 @@ ParfWifiManagerMod::CheckInit (ParfWifiRemoteStation *station)
 }
 
 void
-ParfWifiManagerMod::DoReportRtsFailed (WifiRemoteStation *station)
+ParfModWifiManager::DoReportRtsFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
@@ -153,7 +153,7 @@ ParfWifiManagerMod::DoReportRtsFailed (WifiRemoteStation *station)
  * transmission, be it an initial transmission or a retransmission.
  */
 void
-ParfWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
+ParfModWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   ParfWifiRemoteStation *station = (ParfWifiRemoteStation *)st;
@@ -226,18 +226,18 @@ ParfWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
     }
 }
 void
-ParfWifiManagerMod::DoReportRxOk (WifiRemoteStation *station,
+ParfModWifiManager::DoReportRxOk (WifiRemoteStation *station,
                                double rxSnr, WifiMode txMode)
 {
   NS_LOG_FUNCTION (this << station << rxSnr << txMode);
 }
-void ParfWifiManagerMod::DoReportRtsOk (WifiRemoteStation *station,
+void ParfModWifiManager::DoReportRtsOk (WifiRemoteStation *station,
                                      double ctsSnr, WifiMode ctsMode, double rtsSnr)
 {
   NS_LOG_FUNCTION (this << station << ctsSnr << ctsMode << rtsSnr);
   NS_LOG_DEBUG ("station=" << station << " rts ok");
 }
-void ParfWifiManagerMod::DoReportDataOk (WifiRemoteStation *st,
+void ParfModWifiManager::DoReportDataOk (WifiRemoteStation *st,
                                       double ackSnr, WifiMode ackMode, double dataSnr)
 {
   NS_LOG_FUNCTION (this << st << ackSnr << ackMode << dataSnr);
@@ -276,18 +276,18 @@ void ParfWifiManagerMod::DoReportDataOk (WifiRemoteStation *st,
     }
 }
 void
-ParfWifiManagerMod::DoReportFinalRtsFailed (WifiRemoteStation *station)
+ParfModWifiManager::DoReportFinalRtsFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
 void
-ParfWifiManagerMod::DoReportFinalDataFailed (WifiRemoteStation *station)
+ParfModWifiManager::DoReportFinalDataFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
 
 WifiTxVector
-ParfWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
+ParfModWifiManager::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
 {
   NS_LOG_FUNCTION (this << st << size);
   ParfWifiRemoteStation *station = (ParfWifiRemoteStation *) st;
@@ -295,7 +295,7 @@ ParfWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
   return WifiTxVector (GetSupported (station, station->m_currentRate), station->m_currentPower, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetStbc (station));
 }
 WifiTxVector
-ParfWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
+ParfModWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   /// \todo we could/should implement the Arf algorithm for
@@ -305,7 +305,7 @@ ParfWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
 }
 
 bool
-ParfWifiManagerMod::IsLowLatency (void) const
+ParfModWifiManager::IsLowLatency (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;

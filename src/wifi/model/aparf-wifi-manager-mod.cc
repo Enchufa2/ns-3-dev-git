@@ -24,7 +24,7 @@
 #include "ns3/uinteger.h"
 #include "ns3/trace-source-accessor.h"
 #define Min(a,b) ((a < b) ? a : b)
-NS_LOG_COMPONENT_DEFINE ("ns3::AparfWifiManagerMod");
+NS_LOG_COMPONENT_DEFINE ("ns3::AparfModWifiManager");
 
 namespace ns3 {
 
@@ -51,81 +51,81 @@ AparfWifiRemoteStation : public WifiRemoteStation
   uint32_t m_nSupported; //!< Number of supported rates by the remote station.
   bool m_initialized; //!< For initializing variables.
 
-  AparfWifiManagerMod::State m_aparfState; //!< The estimated state of the channel.
+  AparfModWifiManager::State m_aparfState; //!< The estimated state of the channel.
 };
 
-NS_OBJECT_ENSURE_REGISTERED (AparfWifiManagerMod);
+NS_OBJECT_ENSURE_REGISTERED (AparfModWifiManager);
 
 TypeId
-AparfWifiManagerMod::GetTypeId (void)
+AparfModWifiManager::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::AparfWifiManagerMod")
+  static TypeId tid = TypeId ("ns3::AparfModWifiManager")
     .SetParent<WifiRemoteStationManager> ()
     .SetGroupName ("Wifi")
-    .AddConstructor<AparfWifiManagerMod> ()
+    .AddConstructor<AparfModWifiManager> ()
     .AddAttribute ("SuccessThreshold 1",
                    "The minimum number of successful transmissions in \"High\" state to try a new power or rate.",
                    UintegerValue (3),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_succesMax1),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_succesMax1),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("SuccessThreshold 2",
                    "The minimum number of successful transmissions in \"Low\" state to try a new power or rate.",
                    UintegerValue (10),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_succesMax2),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_succesMax2),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("FailThreshold",
                    "The minimum number of failed transmissions to try a new power or rate.",
                    UintegerValue (1),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_failMax),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_failMax),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("PowerThreshold",
                    "The maximum number of power changes.",
                    UintegerValue (10),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_powerMax),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_powerMax),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("Power decrement step",
                    "Step size for decrement the power.",
                    UintegerValue (1),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_powerDec),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_powerDec),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("Power increment step",
                    "Step size for increment the power.",
                    UintegerValue (1),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_powerInc),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_powerInc),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("Rate decrement step",
                    "Step size for decrement the rate.",
                    UintegerValue (1),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_rateDec),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_rateDec),
                    MakeUintegerChecker<uint32_t> ())
     .AddAttribute ("Rate increment step",
                    "Step size for increment the rate.",
                    UintegerValue (1),
-                   MakeUintegerAccessor (&AparfWifiManagerMod::m_rateInc),
+                   MakeUintegerAccessor (&AparfModWifiManager::m_rateInc),
                    MakeUintegerChecker<uint32_t> ())
     .AddTraceSource ("PowerChange",
                      "The transmission power has change",
-                     MakeTraceSourceAccessor (&AparfWifiManagerMod::m_powerChange),
-                     "ns3::AparfWifiManagerMod::PowerChangeTracedCallback")
+                     MakeTraceSourceAccessor (&AparfModWifiManager::m_powerChange),
+                     "ns3::AparfModWifiManager::PowerChangeTracedCallback")
     .AddTraceSource ("RateChange",
                      "The transmission rate has change",
-                     MakeTraceSourceAccessor (&AparfWifiManagerMod::m_rateChange),
-                     "ns3::AparfWifiManagerMod::RateChangeTracedCallback")
+                     MakeTraceSourceAccessor (&AparfModWifiManager::m_rateChange),
+                     "ns3::AparfModWifiManager::RateChangeTracedCallback")
   ;
   return tid;
 }
 
-AparfWifiManagerMod::AparfWifiManagerMod ()
+AparfModWifiManager::AparfModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
-AparfWifiManagerMod::~AparfWifiManagerMod ()
+AparfModWifiManager::~AparfModWifiManager ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-AparfWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
+AparfModWifiManager::SetupPhy (Ptr<WifiPhy> phy)
 {
   m_minPower = phy->GetTxPowerStart();
   m_maxPower = phy->GetTxPowerEnd();
@@ -133,7 +133,7 @@ AparfWifiManagerMod::SetupPhy (Ptr<WifiPhy> phy)
 }
 
 WifiRemoteStation *
-AparfWifiManagerMod::DoCreateStation (void) const
+AparfModWifiManager::DoCreateStation (void) const
 {
   NS_LOG_FUNCTION (this);
   AparfWifiRemoteStation *station = new AparfWifiRemoteStation ();
@@ -143,7 +143,7 @@ AparfWifiManagerMod::DoCreateStation (void) const
   station->m_nSuccess = 0;
   station->m_nFailed = 0;
   station->m_pCount = 0;
-  station->m_aparfState = AparfWifiManagerMod::High;
+  station->m_aparfState = AparfModWifiManager::High;
   station->m_initialized = false;
 
   NS_LOG_DEBUG ("create station=" << station << ", rate=" << station->m_rate
@@ -153,7 +153,7 @@ AparfWifiManagerMod::DoCreateStation (void) const
 }
 
 void
-AparfWifiManagerMod::CheckInit (AparfWifiRemoteStation *station)
+AparfModWifiManager::CheckInit (AparfWifiRemoteStation *station)
 {
   if (!station->m_initialized)
     {
@@ -167,12 +167,12 @@ AparfWifiManagerMod::CheckInit (AparfWifiRemoteStation *station)
     }
 }
 
-void AparfWifiManagerMod::DoReportRtsFailed (WifiRemoteStation *station)
+void AparfModWifiManager::DoReportRtsFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
 
-void AparfWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
+void AparfModWifiManager::DoReportDataFailed (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   AparfWifiRemoteStation *station = (AparfWifiRemoteStation *) st;
@@ -182,14 +182,14 @@ void AparfWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
   NS_LOG_DEBUG ("station=" << station << ", rate=" << station->m_rate
                            << ", power=" << (int)station->m_power);
 
-  if (station->m_aparfState == AparfWifiManagerMod::Low)
+  if (station->m_aparfState == AparfModWifiManager::Low)
     {
-      station->m_aparfState = AparfWifiManagerMod::High;
+      station->m_aparfState = AparfModWifiManager::High;
       station->m_successThreshold = m_succesMax1;
     }
-  else if (station->m_aparfState == AparfWifiManagerMod::Spread)
+  else if (station->m_aparfState == AparfModWifiManager::Spread)
     {
-      station->m_aparfState = AparfWifiManagerMod::Low;
+      station->m_aparfState = AparfModWifiManager::Low;
       station->m_successThreshold = m_succesMax2;
     }
 
@@ -217,19 +217,19 @@ void AparfWifiManagerMod::DoReportDataFailed (WifiRemoteStation *st)
     }
 }
 void
-AparfWifiManagerMod::DoReportRxOk (WifiRemoteStation *station, double rxSnr, WifiMode txMode)
+AparfModWifiManager::DoReportRxOk (WifiRemoteStation *station, double rxSnr, WifiMode txMode)
 {
   NS_LOG_FUNCTION (this << station << rxSnr << txMode);
 }
 void
-AparfWifiManagerMod::DoReportRtsOk (WifiRemoteStation *station, double ctsSnr,
+AparfModWifiManager::DoReportRtsOk (WifiRemoteStation *station, double ctsSnr,
                                  WifiMode ctsMode, double rtsSnr)
 {
   NS_LOG_FUNCTION (this << station << ctsSnr << ctsMode << rtsSnr);
   NS_LOG_DEBUG ("station=" << station << " rts ok");
 }
 void
-AparfWifiManagerMod::DoReportDataOk (WifiRemoteStation *st, double ackSnr,
+AparfModWifiManager::DoReportDataOk (WifiRemoteStation *st, double ackSnr,
                                   WifiMode ackMode, double dataSnr)
 {
   NS_LOG_FUNCTION (this << st << ackSnr << ackMode << dataSnr);
@@ -239,17 +239,17 @@ AparfWifiManagerMod::DoReportDataOk (WifiRemoteStation *st, double ackSnr,
   station->m_nFailed = 0;
   NS_LOG_DEBUG ("station=" << station << " data ok success=" << station->m_nSuccess << ", rate=" << station->m_rate << ", power=" << (int)station->m_power);
 
-  if ((station->m_aparfState == AparfWifiManagerMod::High) && (station->m_nSuccess >= station->m_successThreshold))
+  if ((station->m_aparfState == AparfModWifiManager::High) && (station->m_nSuccess >= station->m_successThreshold))
     {
-      station->m_aparfState = AparfWifiManagerMod::Spread;
+      station->m_aparfState = AparfModWifiManager::Spread;
     }
-  else if ((station->m_aparfState == AparfWifiManagerMod::Low) && (station->m_nSuccess >= station->m_successThreshold))
+  else if ((station->m_aparfState == AparfModWifiManager::Low) && (station->m_nSuccess >= station->m_successThreshold))
     {
-      station->m_aparfState = AparfWifiManagerMod::Spread;
+      station->m_aparfState = AparfModWifiManager::Spread;
     }
-  else if (station->m_aparfState == AparfWifiManagerMod::Spread)
+  else if (station->m_aparfState == AparfModWifiManager::Spread)
     {
-      station->m_aparfState = AparfWifiManagerMod::High;
+      station->m_aparfState = AparfModWifiManager::High;
       station->m_successThreshold = m_succesMax1;
     }
 
@@ -302,18 +302,18 @@ AparfWifiManagerMod::DoReportDataOk (WifiRemoteStation *st, double ackSnr,
     }
 }
 void
-AparfWifiManagerMod::DoReportFinalRtsFailed (WifiRemoteStation *station)
+AparfModWifiManager::DoReportFinalRtsFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
 void
-AparfWifiManagerMod::DoReportFinalDataFailed (WifiRemoteStation *station)
+AparfModWifiManager::DoReportFinalDataFailed (WifiRemoteStation *station)
 {
   NS_LOG_FUNCTION (this << station);
 }
 
 WifiTxVector
-AparfWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
+AparfModWifiManager::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
 {
   NS_LOG_FUNCTION (this << st << size);
   AparfWifiRemoteStation *station = (AparfWifiRemoteStation *) st;
@@ -321,7 +321,7 @@ AparfWifiManagerMod::DoGetDataTxVector (WifiRemoteStation *st, uint32_t size)
   return WifiTxVector (GetSupported (station, station->m_rate), station->m_power, GetLongRetryCount (station), GetShortGuardInterval (station), Min (GetNumberOfReceiveAntennas (station),GetNumberOfTransmitAntennas ()), GetNumberOfTransmitAntennas (station), GetStbc (station));
 }
 WifiTxVector
-AparfWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
+AparfModWifiManager::DoGetRtsTxVector (WifiRemoteStation *st)
 {
   NS_LOG_FUNCTION (this << st);
   /// \todo we could/should implement the Arf algorithm for
@@ -331,7 +331,7 @@ AparfWifiManagerMod::DoGetRtsTxVector (WifiRemoteStation *st)
 }
 
 bool
-AparfWifiManagerMod::IsLowLatency (void) const
+AparfModWifiManager::IsLowLatency (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;
