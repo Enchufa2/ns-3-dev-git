@@ -116,16 +116,23 @@ class EnergyModel {
     std::string getDevice() { return m_device; }
 		double getTotalEnergy() { return m_total_energy; }
 
+		// tx
     void computeModel(double time, int mcs, int txp) {
     	txp = pow(10, txp/10); // Transform dBm to mW
     	m_total_energy += (m_intercept_tx + m_mcs_beta_tx*mcs + m_txp_beta*txp) * time;
     }
+		// rx
     void computeModel(double time, int mcs) {
     	m_total_energy += (m_intercept_rx + m_mcs_beta_rx*mcs) * time;
     }
+		// idle
+		void computeModel(double time) {
+			m_total_energy += m_rho_idle * time;
+		}
 
 	private:
 		std::string m_device;
+		double m_rho_idle; 			// W
 		double m_intercept_tx;  // W
 		double m_mcs_beta_tx;   // Mbps
 		double m_txp_beta;      // mW
@@ -138,30 +145,35 @@ EnergyModel::EnergyModel (std::string device)
 {
 	m_device = device;
 	if (device.compare("htc") == 0) {
+		m_rho_idle = 0.63527;
 		m_intercept_tx = 0.354;
 		m_mcs_beta_tx = 0.0052;
 		m_txp_beta = 0.021;
 		m_intercept_rx = 0.013;
 		m_mcs_beta_rx = 0.00643;
 	} else if (device.compare("linksys") == 0) {
+		m_rho_idle = 2.73;
 		m_intercept_tx = 0.54;
 		m_mcs_beta_tx = 0.0028;
 		m_txp_beta = 0.075;
 		m_intercept_rx = 0.14;
 		m_mcs_beta_rx = 0.0130;
 	} else if (device.compare("rpi") == 0) {
+		m_rho_idle = 2.2203;
     m_intercept_tx = 0.478;
 		m_mcs_beta_tx = 0.0008;
 		m_txp_beta = 0.044;
 		m_intercept_rx = -0.0062;
 		m_mcs_beta_rx = 0.00146;
 	} else if (device.compare("galaxy") == 0) {
+		m_rho_idle = 0.59159;
 		m_intercept_tx = 0.572;
     m_mcs_beta_tx = 0.0017;
     m_txp_beta = 0.0105;
     m_intercept_rx = 0.0409;
     m_mcs_beta_rx = 0.00173;
 	} else if (device.compare("soekris") == 0) {
+		m_rho_idle = 3.56;
     m_intercept_tx = 0.17;
     m_mcs_beta_tx = 0.017;
     m_txp_beta = 0.101;
@@ -188,7 +200,8 @@ std::map<Mac48Address, WifiMode> actualMode;
 Ptr<WifiPhy> myPhy;
 double init = 0;
 double end = 0;
-double totalTime = 0;
+double txTime = 0;
+double rxTime = 0;
 uint32_t totalBytes = 0;
 double totalEnergy = 0;
 TxTime timeTable;
@@ -217,7 +230,7 @@ void PhyTxCallback (std::string path, Ptr<const Packet> packet)
     for (int i=0; i < models.size(); i++)
 	    models.at(i).computeModel(t, actualMode[dest].GetDataRate()/1e6, actualPower[dest]);
 	  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " DATA: t " << t << ", rate " << actualMode[dest].GetDataRate()/1e6 << ", power " << actualPower[dest]);
-    totalTime += t;
+    txTime += t;
   }
 }
 
@@ -240,7 +253,7 @@ void PhyRxOkCallback (std::string path, Ptr<const Packet> packet, double snr, Wi
     for (int i=0; i < models.size(); i++)
       models.at(i).computeModel(t, mode.GetDataRate()/1e6);
     NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " ACK: t " << t << ", rate " << mode.GetDataRate()/1e6);
-    totalTime += t;
+    rxTime += t;
     t = 0;
   }
 }
@@ -496,14 +509,17 @@ int main (int argc, char *argv[])
   Simulator::Run ();
   Simulator::Destroy ();
 
-  for (int i=0; i < models.size(); i++)
+  for (int i=0; i < models.size(); i++) {
+		models.at(i).computeModel(end - init - txTime - rxTime);
     std::cout <<
-      end-init << " " <<
-      totalTime << " " <<
+      end - init << " " <<
+      txTime << " " <<
+			rxTime << " " <<
       totalBytes << " " <<
       models.at(i).getDevice() << " " <<
       models.at(i).getTotalEnergy() <<
     std::endl;
+	}
 
   return 0;
 }

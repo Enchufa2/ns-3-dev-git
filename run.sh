@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MANAGERS="Parf Aparf Rrpaa Prcs MinstrelBlues"
-REP=3
+REP=10
 
 job() {
   local OUT=$(NS_GLOBAL_VALUE="RngRun=$2" ./waf --run "power-adaptation-distance --manager=ns3::${1}WifiManager")
