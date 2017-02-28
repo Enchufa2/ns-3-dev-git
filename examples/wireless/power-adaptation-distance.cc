@@ -231,6 +231,9 @@ void PhyTxCallback (std::string path, Ptr<const Packet> packet)
 	    models.at(i).computeModel(t, actualMode[dest].GetDataRate()/1e6, actualPower[dest]);
 	  NS_LOG_INFO ((Simulator::Now ()).GetSeconds () << " DATA: t " << t << ", rate " << actualMode[dest].GetDataRate()/1e6 << ", power " << actualPower[dest]);
     txTime += t;
+    if (!init)
+        init = Simulator::Now ().GetSeconds ();
+    end = Simulator::Now().GetSeconds();
   }
 }
 
@@ -345,7 +348,6 @@ static void StaMacAssoc (Mac48Address maddr)
       apps_source = source.Install (wifiApNodes.Get (0));
   }
   apps_source.Start(Seconds(0.0));
-  init = Simulator::Now ().GetSeconds ();
 
   Config::Connect ("/NodeList/1/ApplicationList/*/$ns3::PacketSink/Rx",
                    MakeCallback (&RxCallback));
@@ -353,7 +355,6 @@ static void StaMacAssoc (Mac48Address maddr)
 
 static void StaMacDeAssoc (Mac48Address maddr)
 {
-  end = Simulator::Now ().GetSeconds ();
   apps_source.Stop(Seconds(0.0));
 }
 
@@ -368,10 +369,10 @@ int main (int argc, char *argv[])
   std::string outputFileName = "parf";
   int ap1_x = 0;
   int ap1_y = 0;
-  int sta1_x = -140;
+  int sta1_x = -113;
   int sta1_y = 5;
   double speed = 3;
-  uint32_t simuTime = 100;
+  uint32_t simuTime = 38;
   bool enablePcap = false;
 
   CommandLine cmd;
@@ -510,9 +511,10 @@ int main (int argc, char *argv[])
   Simulator::Destroy ();
 
   for (int i=0; i < models.size(); i++) {
-		models.at(i).computeModel(end - init - txTime - rxTime);
+    models.at(i).computeModel(end - init - txTime - rxTime);
     std::cout <<
-      end - init << " " <<
+      end << " " <<
+      init << " " <<
       txTime << " " <<
 			rxTime << " " <<
       totalBytes << " " <<
